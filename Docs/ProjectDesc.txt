@@ -1,0 +1,21 @@
+Cores (4 processors: each has 32 registers, coreid (as in one reg should be hardwired to store the coreid), instructionid)
+Memory (4kb worth, 1000 blocks of memory, each core can access 1kb of memory, no overlaps)
+
+One sim class which connects all of this, has 4 core objects, 1 memory object and a program counter
+
+functions the core should perform:
+ADD, ADDI
+SUB
+BNE
+JAL
+LW
+SW
++1 of our choice (?)
+
+hinderance?
+BNE, JAL: we need to maintain a history of code lines read inorder to jump back, we can use a dictionary to jump back to that line, the label is the key and udpdate the program counter to that instruction
+LW: If the rs contains brackets, then it should move to that address in memory block, similar to SW
+
+
+
+execute all the cores in parallel, using threadpoolexecutor 
