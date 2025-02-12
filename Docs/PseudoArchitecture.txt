@@ -1,0 +1,34 @@
+Core:
+	pc
+	coreid
+	memory = Memory()
+	program_label_map = {string: int}
+	memory[coreid] = coreid
+	fun execute()
+
+Memory:
+	list = [1000 values (4kB memory)]
+
+Simulator:
+	cores = [ 4 Core() ]
+	program = []
+	clock
+	fun run() #run all cores parallely using threadpool executor
+
+
+
+execute(string s) -> void:
+	inst = s.split(" ")
+
+	if(size(inst)>4)
+		self.program_label_map[inst[0]] = pc
+		delete inst[0]
+
+	switch inst[0]:
+		case "ADD": #directly work with regs, also add ADDI
+		case "SUB": #same as add, also add SUBI
+		case "LW": #break the parenthesis to get the immediate value and then access memory
+		case "BNE": #check equalance and then set pc to program_label_map[inst[3]]
+		case "JAL": #set pc in memory[999] and then jump to the loop, pc = program_label_map[inst[3]]
+		case "SW": #similar to lw
+		
