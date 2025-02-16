@@ -76,9 +76,89 @@ class Cores:
             rd = int(parts[1][1:])
             rs1 = int(parts[2][1:])
             rs2 = int(parts[3][1:])
-            if(rs2!=0):
-                self.registers[rd]=self.registers[rs1] % self.registers[rs2]
-            
+            if self.registers[rs2] != 0:
+                self.registers[rd] = self.registers[rs1] % self.registers[rs2]
+
+         # MUL X1 X2 X3
+        elif opcode == "MUL":
+            rd = int(parts[1][1:])
+            rs1 = int(parts[2][1:])
+            rs2 = int(parts[3][1:])
+            self.registers[rd] = self.registers[rs1] * self.registers[rs2]
+
+        # XOR X1 X2 X3
+        elif opcode == "XOR":
+            rd = int(parts[1][1:])
+            rs1 = int(parts[2][1:])
+            rs2 = int(parts[3][1:])
+            self.registers[rd] = self.registers[rs1] ^ self.registers[rs2]
+
+        # XORI X1 X2 IMM
+        elif opcode == "XORI":
+            rd = int(parts[1][1:])
+            rs1 = int(parts[2][1:])
+            imm = int(parts[3])
+            self.registers[rd] = self.registers[rs1] ^ imm
+
+        # AND X1 X2 X3
+        elif opcode == "AND":
+            rd = int(parts[1][1:])
+            rs1 = int(parts[2][1:])
+            rs2 = int(parts[3][1:])
+            self.registers[rd] = self.registers[rs1] & self.registers[rs2]
+
+        # ANDI X1 X2 IMM
+        elif opcode == "ANDI":
+            rd = int(parts[1][1:])
+            rs1 = int(parts[2][1:])
+            imm = int(parts[3])
+            self.registers[rd] = self.registers[rs1] & imm
+
+        # OR X1 X2 X3
+        elif opcode == "OR":
+            rd = int(parts[1][1:])
+            rs1 = int(parts[2][1:])
+            rs2 = int(parts[3][1:])
+            self.registers[rd] = self.registers[rs1] | self.registers[rs2]
+        
+        # ORI X1 X2 IMM
+        elif opcode == "ORI":
+            rd = int(parts[1][1:])
+            rs1 = int(parts[2][1:])
+            imm = int(parts[3])
+            self.registers[rd] = self.registers[rs1] | imm
+        
+        # J LABEL
+        elif opcode == "J":
+            label = parts[1]
+            self.pc = self.labels[label] - 1
+
+        # MV X1 X2
+        elif opcode == "MV":
+            rd = int(parts[1][1:])
+            rs1 = int(parts[2][1:])
+            self.registers[rd] = self.registers[rs1]
+
+        # LI X1 IMM
+        elif opcode == "LI":
+            rd = int(parts[1][1:])
+            imm = int(parts[2])
+            self.registers[rd] = imm
+
+        # SLL X1 X2 X3
+        elif opcode == "SLL":
+            rd = int(parts[1][1:])
+            rs1 = int(parts[2][1:])
+            rs2 = int(parts[3][1:])
+            self.registers[rd] = self.registers[rs1] << self.registers[rs2]
+
+        # SLLI X1 X2 IMM
+        elif opcode == "SLLI":
+            rd = int(parts[1][1:])
+            rs1 = int(parts[2][1:])
+            imm = int(parts[3])
+            self.registers[rd] = self.registers[rs1] << imm
+
         self.pc += 1
 
 class Simulator:
@@ -100,11 +180,14 @@ class Simulator:
                 self.program.append(line)
         
     def run(self):
-        while any(core.pc < len(self.program) for core in self.cores):
-            for core in self.cores:
-                core.execute(self.program, self.memory)
-            self.clock += 1
-
+        try:
+            while any(core.pc < len(self.program) for core in self.cores):
+                for core in self.cores:
+                    core.execute(self.program, self.memory)
+                self.clock += 1
+        except KeyboardInterrupt:
+            print("Simulation interrupted.")
+        
     def display(self):
         print("\n=== Register States ===")
         for i, core in enumerate(self.cores):
@@ -131,6 +214,11 @@ example_program = [
     "ADDI X6 X0 2",        # X6 = 2
     "ADD X4 X5 X6",        # X4 = X5 + X6
     "SUB X7 X4 X6",        # X7 = X4 - X6
+    "MUL X14 X4 X6",       # X14 = X4 * X6
+    "MV X15 X14",          # Move X14 to X15
+    "AND X16 X15 X14",     # X16 = X15 & X14
+    "OR X17 X16 X15",      # X17 = X16 | X15
+    "SLLI X18 X17 4",      # X18 = X17 << 4
     "SW X4 0(X5)",         # Store X4 in memory at address X5 + 0
     "LW X9 0(X5)",         # Load value from memory at address X5 + 0 to X9
     "BNE X9 X4 END",       # Branch to END if X9 != X4
@@ -146,6 +234,6 @@ example_program = [
 sim = Simulator()
 sim.load_program(example_program)
 sim.run()
+print(f"Number of clock cycles: {sim.clock}")
 sim.display()
 
-print(f"Number of clock cycles: {sim.clock}")
