@@ -1,10 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
-import ttkbootstrap as ttkb
-from ttkbootstrap.constants import *
-import threading
+from tkinter import ttk, messagebox
 
 class Cores:
     def __init__(self, cid):
@@ -12,33 +9,29 @@ class Cores:
         self.registers[31] = cid  # Core ID Register (Read-Only)
         self.pc = 0
         self.coreid = cid
-
+    
     def execute(self, pgm, mem):
         if self.pc >= len(pgm):
             return
-
+        
         # Split the instruction
         parts = pgm[self.pc].split()
-        if len(parts) == 0:
-            self.pc += 1
-            return
-
         opcode = parts[0]
-
+        
         # ADD X1 X2 X3
         if opcode == "ADD":
             rd = int(parts[1][1:])
             rs1 = int(parts[2][1:])
             rs2 = int(parts[3][1:])
             self.registers[rd] = self.registers[rs1] + self.registers[rs2]
-
+       
         # SUB X1 X2 X3
         elif opcode == "SUB":
             rd = int(parts[1][1:])
             rs1 = int(parts[2][1:])
             rs2 = int(parts[3][1:])
             self.registers[rd] = self.registers[rs1] - self.registers[rs2]
-
+        
         # ADDI X1 X2 IMM
         elif opcode == "ADDI":
             rd = int(parts[1][1:])
@@ -53,14 +46,14 @@ class Cores:
             label = parts[3]
             if self.registers[rs1] != self.registers[rs2]:
                 self.pc = labels[label] - 1
-
+        
         # JAL X1 LABEL
         elif opcode == "JAL":
             rd = int(parts[1][1:])
             label = parts[2]
             self.registers[rd] = self.pc + 1  # Store return address
             self.pc = labels[label] - 1
-
+        
         # LW X1 OFFSET(X2)
         elif opcode == "LW":
             rd = int(parts[1][1:])  # Destination register
@@ -69,7 +62,7 @@ class Cores:
             mem_addr = self.registers[rs1] + int(offset)  # Calculate memory address
             mem_index = (mem_addr // 4) % len(mem)
             self.registers[rd] = mem[mem_index]  # Load from memory to register
-
+            
         # SW X1 OFFSET(X2)
         elif opcode == "SW":
             rs2 = int(parts[1][1:])  # Source register to be stored
@@ -78,7 +71,7 @@ class Cores:
             mem_addr = self.registers[rs1] + int(offset)  # Calculate memory address
             mem_index = (mem_addr // 4) % len(mem)
             mem[mem_index] = self.registers[rs2]  # Store register value in memory
-
+           
         # MOD X1 X2 X3
         elif opcode == "MOD":
             rd = int(parts[1][1:])
@@ -128,14 +121,14 @@ class Cores:
             rs1 = int(parts[2][1:])
             rs2 = int(parts[3][1:])
             self.registers[rd] = self.registers[rs1] | self.registers[rs2]
-
+        
         # ORI X1 X2 IMM
         elif opcode == "ORI":
             rd = int(parts[1][1:])
             rs1 = int(parts[2][1:])
             imm = int(parts[3])
             self.registers[rd] = self.registers[rs1] | imm
-
+        
         # J LABEL
         elif opcode == "J":
             label = parts[1]
@@ -169,7 +162,6 @@ class Cores:
 
         self.pc += 1
 
-
 class Simulator:
     def __init__(self):
         self.memory = [0] * (4096 // 4)  # 4KB Shared Memory (4 bytes per entry)
@@ -187,78 +179,58 @@ class Simulator:
                 labels[line[:-1]] = len(self.program)
             else:
                 self.program.append(line)
-
-    def run(self, output_console, progress_var):
+        
+    def run(self):
         try:
             while any(core.pc < len(self.program) for core in self.cores):
                 for core in self.cores:
                     core.execute(self.program, self.memory)
                 self.clock += 1
-                output_console.insert(tk.END, f"Clock cycle: {self.clock}\n")
-                output_console.see(tk.END)
-                progress_var.set((self.clock / len(self.program)) * 100)
         except KeyboardInterrupt:
             print("Simulation interrupted.")
-
-    def display(self, output_console):
-        output_console.insert(tk.END, "\n=== Register States ===\n")
+        
+    def display(self):
+        print("\n=== Register States ===")
         for i, core in enumerate(self.cores):
-            output_console.insert(tk.END, f"Core {i}: {core.registers}\n")
-
-        output_console.insert(tk.END, "\n=== Shared Memory ===\n")
-        output_console.insert(tk.END, f"{self.memory}\n")
-
+            print(f"Core {i}: {core.registers}")
+        
+        print("\n=== Shared Memory ===")
+        print(self.memory)
+        
         # Visualization
         plt.figure(figsize=(16, 8))
         data = np.array([self.cores[i].registers for i in range(4)])
         plt.imshow(data, cmap="Blues", aspect='auto')
         for i in range(4):
             for j in range(32):
-                plt.text(j, i, str(self.cores[i].registers[j]),
+                plt.text(j, i, str(self.cores[i].registers[j]), 
                          ha='center', va='center', color='black')
         plt.title("Register States of 4 Cores")
         plt.axis('off')
         plt.show()
-
+    
     def show_gui(self):
-        root = ttkb.Window(themename="darkly")
-        root.title("X25++ Simulator")
-
-        # GUI Layout
-        main_frame = ttkb.Frame(root, padding=(10, 10))
-        main_frame.pack(fill=BOTH, expand=True)
-
+        root = tk.Tk()
+        root.title("4-Core Simulator")
+        
         # Text box for program input
-        program_label = ttkb.Label(main_frame, text="Program:")
-        program_label.pack(anchor=W)
-        program_text = tk.Text(main_frame, height=10, width=50, wrap=WORD)
-        program_text.pack(fill=X, expand=True)
-
-        # Console output
-        console_output_label = ttkb.Label(main_frame, text="Console Output:")
-        console_output_label.pack(anchor=W)
-        console_output = scrolledtext.ScrolledText(main_frame, height=10, wrap=WORD, state=NORMAL)
-        console_output.pack(fill=BOTH, expand=True)
-
-        # Progress Bar
-        progress_var = tk.DoubleVar()
-        progress_bar = ttkb.Progressbar(main_frame, variable=progress_var, maximum=100, bootstyle="info-striped")
-        progress_bar.pack(fill=X, pady=10)
-
+        program_label = tk.Label(root, text="Program:")
+        program_label.pack()
+        program_text = tk.Text(root, height=10, width=50)
+        program_text.pack()
+        
         # Button to load and run the program
         def load_and_run():
             program_lines = program_text.get("1.0", tk.END).strip().split('\n')
             self.load_program(program_lines)
-            console_output.config(state=NORMAL)
-            console_output.delete('1.0', tk.END)
-            thread = threading.Thread(target=self.run, args=(console_output, progress_var))
-            thread.start()
-
-        run_button = ttkb.Button(main_frame, text="Run", command=load_and_run, bootstyle="success")
-        run_button.pack(pady=(10, 0))
-
+            self.run()
+            self.display()
+            messagebox.showinfo("Simulation Complete", f"Number of clock cycles: {self.clock}")
+            print("Number of clock cycles:", self.clock)
+        run_button = tk.Button(root, text="Run", command=load_and_run)
+        run_button.pack()
+        
         root.mainloop()
-
 
 # Example usage
 example_program = """
