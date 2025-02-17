@@ -3,3 +3,7 @@ Core:
 Memory:
 
 Simulator:
+
+
+
+For decoding jal instruction, check if the dest register is specified, else it should default to x32
