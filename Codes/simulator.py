@@ -88,13 +88,28 @@ class Simulator:
         self.clock = 0
 
     def run(self):
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            while True:
-                if(self.clock >= len(self.program)):
-                    break
-                
+        while True:
+            if(self.clock >= len(self.program)):
+                break
+
+            with ThreadPoolExecutor(max_workers=4) as executor:
                 for core in self.cores:
                     executor.submit(core.execute, self.program[core.pc])
                     core.pc += 1
                 
                 self.clock += 1
+
+programs = [
+    "add x1, x2, x3",
+    "addi x1, x2, 5",
+    "sub x1, x2, x3",
+    "lw x1 0(x2)",
+    "sw x1 0(x2)",
+    "bne x1, x2, label",
+    "jal x1, label",
+    "jr x1"
+]
+
+sim = Simulator()
+sim.program = programs
+sim.run()
