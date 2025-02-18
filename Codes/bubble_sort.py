@@ -4,18 +4,21 @@ import tkinter as tk
 from tkinter import messagebox
 
 class Cores:
-    def __init__(self, cid):
+    def __init__(self, cid, mem_start, mem_size):
         self.registers = [0] * 32
         self.registers[31] = cid  # Core ID Register (Read-Only)
         self.pc = 0
         self.coreid = cid
+        self.mem_start = mem_start
+        self.mem_size = mem_size
+        
     
     def execute(self, pgm, mem):
         if self.pc >= len(pgm):
             return
         
         # Split the instruction
-        parts = pgm[self.pc].split()
+        parts = pgm[self.pc].strip().replace(',', ' ').split()
         if len(parts) == 0:
             self.pc += 1
             return
@@ -68,7 +71,7 @@ class Cores:
             offset, rs1 = parts[2].split('(')  # Split at '(' to get offset and register
             rs1 = int(rs1[:-1][1:])  # Remove closing parenthesis and 'X'
             mem_addr = self.registers[rs1] + int(offset)  # Calculate memory address
-            mem_index = (mem_addr // 4) % len(mem)
+            mem_index = (self.mem_start + (mem_addr // 4)) 
             self.registers[rd] = mem[mem_index]  # Load from memory to register
             
         # SW X1 OFFSET(X2)
@@ -77,7 +80,7 @@ class Cores:
             offset, rs1 = parts[2].split('(')  # Split at '(' to get offset and register
             rs1 = int(rs1[:-1][1:])  # Remove closing parenthesis and 'X'
             mem_addr = self.registers[rs1] + int(offset)  # Calculate memory address
-            mem_index = (mem_addr // 4) % len(mem)
+            mem_index = (self.mem_start + (mem_addr // 4)) 
             mem[mem_index] = self.registers[rs2]  # Store register value in memory
 
         # BLE X1 X2 LABEL
@@ -125,9 +128,13 @@ class Cores:
 
 class Simulator:
     def __init__(self):
-        self.memory = [0] * (4096 // 4)  # 4KB Shared Memory (4 bytes per entry)
+        self.total_memory = 4096  # Total memory size in bytes
+        self.memory = [0] * (self.total_memory // 4)  # 4KB Shared Memory (4 bytes per entry)
         self.clock = 0
-        self.cores = [Cores(i) for i in range(4)]
+        self.cores = []
+        core_memory_size = self.total_memory //4 //4   # Divide memory among 4 cores
+        for i in range(4):
+            self.cores.append(Cores(i, i * core_memory_size, core_memory_size))
         self.program = []
 
     def load_program(self, program_lines):
@@ -151,12 +158,16 @@ class Simulator:
             print("Simulation interrupted.")
         
     def display(self):
+        
         print("\n=== Register States ===")
         for i, core in enumerate(self.cores):
             print(f"Core {i}: {core.registers}")
         
         print("\n=== Shared Memory ===")
-        print(self.memory)  # Display only relevant memory
+        for i in range(4):
+            start = i * 1024 // 4
+            end = start + 1024 // 4
+            print(f"Core {i} Memory: {self.memory[start:end]}")
         
         # Visualization
         plt.figure(figsize=(16, 8))
@@ -203,7 +214,7 @@ class Simulator:
 
 # Example Program with Bubble Sort
 example_program = [
-    "ADDI X2 X0 20",  # no. of elements
+    "ADDI X2,X0 20",  # no. of elements
     "ADDI X1 X2 -1",  # n-1
     "ADDI X4 X0 0",   # outer loop i value
 
@@ -264,5 +275,6 @@ sim.load_program(example_program)
 sim.run()
 print(f"Number of clock cycles: {sim.clock}")
 sim.display()
+sim.show_gui()
 sorted_array = sim.get_sorted_array()
 print("Sorted Array:", sorted_array)
