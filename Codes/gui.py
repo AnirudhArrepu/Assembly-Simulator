@@ -14,10 +14,10 @@ class Cores:
         if self.pc >= len(pgm):
             return
         
-        # Split the instruction
-        parts = pgm[self.pc].split()
+        # Split the instruction, handle different spacings and formats
+        parts = pgm[self.pc].strip().replace(',', ' ').split()
         opcode = parts[0]
-        
+
         # ADD X1 X2 X3
         if opcode == "ADD":
             rd = int(parts[1][1:])
@@ -71,7 +71,7 @@ class Cores:
             mem_addr = self.registers[rs1] + int(offset)  # Calculate memory address
             mem_index = (mem_addr // 4) % len(mem)
             mem[mem_index] = self.registers[rs2]  # Store register value in memory
-           
+
         # MOD X1 X2 X3
         elif opcode == "MOD":
             rd = int(parts[1][1:])
@@ -132,7 +132,7 @@ class Cores:
         # J LABEL
         elif opcode == "J":
             label = parts[1]
-            self.pc = self.labels[label] - 1
+            self.pc = labels[label] - 1
 
         # MV X1 X2
         elif opcode == "MV":
@@ -195,7 +195,7 @@ class Simulator:
             print(f"Core {i}: {core.registers}")
         
         print("\n=== Shared Memory ===")
-        print(self.memory)
+        print(self.memory[:80])  # Display only relevant memory
         
         # Visualization
         plt.figure(figsize=(16, 8))
@@ -208,6 +208,8 @@ class Simulator:
         plt.title("Register States of 4 Cores")
         plt.axis('off')
         plt.show()
+
+
     
     def show_gui(self):
         root = tk.Tk()

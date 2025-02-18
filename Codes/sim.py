@@ -12,10 +12,10 @@ class Cores:
         if self.pc >= len(pgm):
             return
         
-        # Split the instruction
-        parts = pgm[self.pc].split()
+        # Split the instruction, handle different spacings and formats
+        parts = pgm[self.pc].strip().replace(',', ' ').split()
         opcode = parts[0]
-        
+
         # ADD X1 X2 X3
         if opcode == "ADD":
             rd = int(parts[1][1:])
@@ -52,7 +52,7 @@ class Cores:
             self.registers[rd] = self.pc + 1  # Store return address
             self.pc = labels[label] - 1
         
-       # LW X1 OFFSET(X2)
+        # LW X1 OFFSET(X2)
         elif opcode == "LW":
             rd = int(parts[1][1:])  # Destination register
             offset, rs1 = parts[2].split('(')  # Split at '(' to get offset and register
@@ -61,7 +61,7 @@ class Cores:
             mem_index = (mem_addr // 4) % len(mem)
             self.registers[rd] = mem[mem_index]  # Load from memory to register
             
-       # SW X1 OFFSET(X2)
+        # SW X1 OFFSET(X2)
         elif opcode == "SW":
             rs2 = int(parts[1][1:])  # Source register to be stored
             offset, rs1 = parts[2].split('(')  # Split at '(' to get offset and register
@@ -69,17 +69,16 @@ class Cores:
             mem_addr = self.registers[rs1] + int(offset)  # Calculate memory address
             mem_index = (mem_addr // 4) % len(mem)
             mem[mem_index] = self.registers[rs2]  # Store register value in memory
-           
 
         # MOD X1 X2 X3
-        elif opcode=="MOD":
+        elif opcode == "MOD":
             rd = int(parts[1][1:])
             rs1 = int(parts[2][1:])
             rs2 = int(parts[3][1:])
             if self.registers[rs2] != 0:
                 self.registers[rd] = self.registers[rs1] % self.registers[rs2]
 
-         # MUL X1 X2 X3
+        # MUL X1 X2 X3
         elif opcode == "MUL":
             rd = int(parts[1][1:])
             rs1 = int(parts[2][1:])
@@ -131,7 +130,7 @@ class Cores:
         # J LABEL
         elif opcode == "J":
             label = parts[1]
-            self.pc = self.labels[label] - 1
+            self.pc = labels[label] - 1
 
         # MV X1 X2
         elif opcode == "MV":
@@ -194,7 +193,7 @@ class Simulator:
             print(f"Core {i}: {core.registers}")
         
         print("\n=== Shared Memory ===")
-        print(self.memory)
+        print(self.memory)  # Display only relevant memory
         
         # Visualization
         plt.figure(figsize=(16, 8))
@@ -210,7 +209,7 @@ class Simulator:
 
 # Example Program
 example_program = [
-    "ADDI X5 X0 3",        # X5 = 3
+    "ADDI X5,X0,3",        # X5 = 3
     "ADDI X6 X0 2",        # X6 = 2
     "ADD X4 X5 X6",        # X4 = X5 + X6
     "SUB X7 X4 X6",        # X7 = X4 - X6
@@ -236,4 +235,3 @@ sim.load_program(example_program)
 sim.run()
 print(f"Number of clock cycles: {sim.clock}")
 sim.display()
-
