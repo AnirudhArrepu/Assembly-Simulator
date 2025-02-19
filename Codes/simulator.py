@@ -11,7 +11,7 @@ class Core:
         self.registers = [0] * 32
 
         self.data_segment = {}
-        self.memory_data_index = 1020
+        self.memory_data_index = 10
 
         self.registers[0] = coreid
 
@@ -37,12 +37,12 @@ class Core:
             rs = int(inst[1][1:])
             data = inst[2]
             for val in self.data_segment[data]:
-                self.memory.memory[self.memory_data_index] = val
+                self.memory.memory[self.memory_data_index*4 + self.coreid] = val
                 self.memory_data_index -= 1
             
             self.registers[rs] = self.memory_data_index + 1
             self.pc+=1
-            
+
         elif(inst[0] == "add"): # add rd, rs1, rs2
             rd = int(inst[1][1:])
             rs1 = int(inst[2][1:])
@@ -71,18 +71,18 @@ class Core:
             rd = int(inst[1][1:])
             offset, rs1 = inst[2].split('(')
             rs1 = int(rs1[:-1][1:])
-            mem_addr = self.registers[rs1] + int(offset)
+            mem_addr = 4*self.registers[rs1] + int(offset)
             
-            self.registers[rd] = self.memory.memory[4*mem_addr + self.coreid]
+            self.registers[rd] = self.memory.memory[mem_addr + self.coreid]
             self.pc+=1
             
         elif(inst[0] == "sw"): #sw rs1 offest(rd)
             rs1 = int(inst[1][1:])
             offset, rd = inst[2].split('(')
             rd = int(rd[:-1][1:])
-            mem_addr = self.registers[rd] + int(offset)
+            mem_addr = 4*self.registers[rd] + int(offset)
 
-            self.memory.memory[4*mem_addr + self.coreid] = self.registers[rs1]
+            self.memory.memory[mem_addr + self.coreid] = self.registers[rs1]
             self.pc+=1
             
         elif(inst[0] == "bne"): #bne rs1, rs2, label
@@ -167,13 +167,11 @@ program = '''
 abc: .word 0x123 0x456 0x789
 
 .text
-addi x9 x0 10
-addi x3 x0 4
-sw x3 0(x9)
-addi x8 x9 0
-addi x9 x9 4
-sw x3 0(x9)
-lw x6 4(x8)
+la x9 abc
+lw x3 0(x9)
+lw x4 4(x9)
+lw x5 8(x9)
+lw x6 12(x9)
 '''
 
 programs = program.split(".text")
@@ -207,3 +205,6 @@ print(sim.cores[3].registers)
 # plt.axis('off')
 
 print(f"number of clock cycles: {sim.clock}")
+
+
+print(sim.memory.memory)
