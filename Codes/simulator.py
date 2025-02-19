@@ -10,7 +10,10 @@ class Core:
         self.program_label_map = {}
         self.registers = [0] * 32
 
-        self.registers[coreid] = coreid
+        self.data_segment = {}
+        self.memory_data_index = 1020
+
+        self.registers[0] = coreid
 
     def make_labels(self, insts):
         for i, inst in enumerate(insts):
@@ -30,8 +33,17 @@ class Core:
 
         # print(inst)
         # print(self.pc)
-
-        if(inst[0] == "add"): # add rd, rs1, rs2
+        if(inst[0] == "la"): # la rs, data
+            rs = int(inst[1][1:])
+            data = inst[2]
+            for val in self.data_segment[data]:
+                self.memory.memory[self.memory_data_index] = val
+                self.memory_data_index -= 1
+            
+            self.registers[rs] = self.memory_data_index + 1
+            self.pc+=1
+            
+        elif(inst[0] == "add"): # add rd, rs1, rs2
             rd = int(inst[1][1:])
             rs1 = int(inst[2][1:])
             rs2 = int(inst[3][1:])
@@ -109,6 +121,17 @@ class Simulator:
         self.cores = [Core(i, self.memory) for i in range(4)]
         self.program = []
         self.clock = 0
+        self.data_segment = {}
+
+    def make_data_segment(self, program_data):
+        for data in program_data:
+            values_data = data.split(".word")[1].split(" ")
+            values_data = [int(value, 16) for value in values_data if value != '']
+            values_data.reverse()
+            self.data_segment[data.split(":")[0]] = values_data
+
+        for core in self.cores:
+            core.data_segment = self.data_segment
 
     def make_labels(self):
         for core in self.cores:
@@ -129,18 +152,43 @@ class Simulator:
             
             self.clock += 1
 
-programs = [
-    "addi x9 x0 10",
-    "addi x3 x0 4",
-    "sw x3 0(x9)",
-    "addi x8 x9 0",
-    "addi x9 x9 4",
-    "sw x3 0(x9)",
-    "lw x6 4(x8)"
-]
+# programs = [
+#     "addi x9 x0 10",
+#     "addi x3 x0 4",
+#     "sw x3 0(x9)",
+#     "addi x8 x9 0",
+#     "addi x9 x9 4",
+#     "sw x3 0(x9)",
+#     "lw x6 4(x8)"
+# ]
+
+program = '''
+.data
+abc: .word 0x123 0x456 0x789
+
+.text
+addi x9 x0 10
+addi x3 x0 4
+sw x3 0(x9)
+addi x8 x9 0
+addi x9 x9 4
+sw x3 0(x9)
+lw x6 4(x8)
+'''
+
+programs = program.split(".text")
+programs_data = programs[0].split(".data")[1].split("\n")
+programs_data = [inst for inst in programs_data if inst != '']
+print(programs_data)
+
+programs_text = programs[1]
+programs = programs_text.split("\n")
+programs_text = [inst for inst in programs if inst != '']
+print(programs_text)
 
 sim = Simulator()
-sim.program = programs
+sim.program = programs_text
+sim.make_data_segment(programs_data)
 sim.make_labels()
 sim.run()
 
