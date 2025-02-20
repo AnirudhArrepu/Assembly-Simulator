@@ -226,7 +226,7 @@ class Simulator:
             self.display()
             print("Sorted Array:", sorted_array)
             
-            messagebox.showinfo("Simulation Complete", f"Clock cycles: {self.clock}\nSorted Array: {sorted_array}")
+            messagebox.showinfo("Simulation Complete", f"Sorted Array: {sorted_array}")
         
         run_button = tk.Button(root, text="Run", command=load_and_run)
         run_button.pack()
