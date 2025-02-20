@@ -9,30 +9,41 @@ Course project - COA
 
 ## MOMs
 
-1.  - Date: 07-02-2025
+1.  - Date: 19-02-2025
     - Memebers: Anirudh A, Raghavendra P
-    - Decision: Anirudh is assigned to get the Software Design ready by 10-02-2025, Raghavendra to read more about the topics and brush up his knowledge of Python.
+    - Decision: Raghavendra completed the GUI using HTML, CSS, and JavaScript, while Anirudh worked on integrating the GUI with the Python backend. Anirudh decided to use Flask for this integration.
 
-2.  - Date: 09-02-2025
+2.  - Date: 17-02-2025
     - Memebers: Anirudh A, Raghavendra P
-    - Decision: Raghavendra was assigned to do the arithematic operations and Anirudh will do memory operations and thought about of the instruction which should be kept unique from risc-V set.
+    - Decision: The team decided to implement a GUI for the simulator. Initially, Raghavendra developed a basic GUI using Tkinter (import tkinter as tk from tkinter import messagebox). However, it was not visually appealing, so We decided to build the GUI using HTML, CSS, and JavaScript instead.
 
-3.  - Date: 11-02-2025
+3.  - Date: 15-02-2025
     - Memebers: Anirudh A, Raghavendra P
-    - Decision:
+    - Decision: The team tested the code with various programs using the data segment format. We verified the correct addressing of arrays and successfully obtained the correct output for sum-of-elements problems.
 
 4.  - Date: 13-02-2025
     - Memebers: Anirudh A, Raghavendra P
-    - Decision: Decided to do the bubble sort algorithm combinely and added the data segment to the code by creating a data segment array which stores the input data from the program as in the format `arr: .word 0x4 ....`
+    - Decision: The team collaboratively implemented the Bubble Sort algorithm. We also added a data segment to the code by creating an array to store input data in the format: arr: .word 0x4 ...
 
-5.  - Date: 15-02-2025
+5.  - Date: 11-02-2025
     - Memebers: Anirudh A, Raghavendra P
-    - Decision: Decide to test the code with other programs using the dat segment format and checked for array addressing and sum of elements in the array problems and successfully acheived the correct output!!.
+    - Decision:
 
-6.  - Date: 17-02-2025
+6.  - Date: 09-02-2025
     - Memebers: Anirudh A, Raghavendra P
-    - Decision: Decided to implement `gui` for our simulator, Raghavendra worked firstly on basic gui platform which is directly supported by python by just importing the library (i.e) `import tkinter as tk  from tkinter import messagebox` but it is not that good for looking so we decided to do gui by using `html,css,javascript`.
+    - Decision: The team divided responsibilities:
+      1.Raghavendra was assigned to implement arithmetic operations.
+      2.Anirudh was responsible for memory operations.
+      3.We discussed defining unique instructions that differ from the RISC-V instruction set.
 
-7.  - Date: 19-02-2025
+7.  - Date: 07-02-2025
     - Memebers: Anirudh A, Raghavendra P
-    - Decision: Raghavendra completed the gui (used html,css,javascript) and Anirudh worked on integrating this gui with python code and Anirudh decide to use `flask` for integration.
+    - Decision:
+      1.Anirudh was assigned to complete the Software Design by 10-02-2025.
+      2.Raghavendra was tasked with reviewing relevant topics and enhancing his Python knowledge.
+
+8.  - Date: 06-02-2025
+    - Memebers: Anirudh A, Raghavendra P
+    - Decision: Decided to complete and build the GPU simulator with `python` language since,
+      1.Python has a simpler syntax compared to C/C++, making it easier to implement and understand complex GPU architectures.
+      2.Python has great visualization tools like Matplotlib and Seaborn, which help analyze performance metrics.
