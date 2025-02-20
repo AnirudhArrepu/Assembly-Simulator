@@ -310,7 +310,7 @@ def simulate():
         'core2': sim.cores[2].registers,
         'core3': sim.cores[3].registers,
         'clock': sim.clock,
-        'memorys': memories,
+        'memory': memories,
         'memory1': memories[0],
         'memory2': memories[1],
         'memory3': memories[2],
