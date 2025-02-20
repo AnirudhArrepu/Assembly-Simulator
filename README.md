@@ -59,10 +59,19 @@ Course project - COA
 
 ### To Execute:
 
+- GUI
 ```cmd
 cd Codes
 cd Backend
 pip install -r requirements.txt
 python simulator.py
 Open 127.0.0.1:5000 in browser
+```
+
+- File Reading: change assembly.asm
+```codes
+cd Codes
+cd Backend
+pip install -r requirements.txt
+python file_reading_simulator.py
 ```
