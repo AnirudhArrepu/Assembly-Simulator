@@ -211,26 +211,48 @@ class Simulator:
         root = tk.Tk()
         root.title("4-Core Simulator")
         
-        program_label = tk.Label(root, text="Program:")
-        program_label.pack()
-        program_text = tk.Text(root, height=10, width=50)
-        program_text.pack()
+        # Set a nice background color
+        root.configure(bg='#2c3e50')
         
-        def load_and_run():
-            program_lines = program_text.get("1.0", tk.END).strip().split('\n')
-            self.load_program(program_lines)
-            self.run()
-           
-            sum_array = self.get_sum_of_10_elements()
-            self.display()
-            print("Sum Array:", sum_array)
-            
-            messagebox.showinfo("Simulation Complete", f"Clock cycles: {self.clock}\nSum_Array: {sum_array}")
+        # Add a background image
+        # Frame for Simulator Name
+        title_frame = tk.Frame(root, bg='#1abc9c', bd=5)
+        title_frame.place(relx=0.5, rely=0.05, relwidth=0.6, relheight=0.04, anchor='n')
+
+        # Label for Simulator Name
+        title_label = tk.Label(title_frame, text="x25++ Simulator", bg='#1abc9c', fg='white', 
+                       font=('Arial', 18, 'bold'))
+        title_label.place(relwidth=1, relheight=1)
         
-        run_button = tk.Button(root, text="Run", command=load_and_run)
-        run_button.pack()
+        program_frame = tk.Frame(root, bg='#34495e', bd=5)
+        program_frame.place(relx=0.5, rely=0.1, relwidth=0.75, relheight=0.75, anchor='n')
+        
+        program_label = tk.Label(program_frame, text="Program:", bg='#34495e', fg='white', font=('Arial', 12))
+        program_label.place(relwidth=0.15, relheight=1)
+        
+        program_text = tk.Text(program_frame, height=70, width=50, bg='#ecf0f1', font=('Arial', 12))
+        program_text.place(relx=0.16, relwidth=0.84, relheight=1)
+        
+        run_button_frame = tk.Frame(root, bg='#34495e', bd=5)
+        run_button_frame.place(relx=0.5, rely=0.87, relwidth=0.3, relheight=0.1, anchor='n')
+        
+        run_button = tk.Button(run_button_frame, text="Run", bg='#27ae60', fg='white', font=('Arial', 14, 'bold'), command=lambda: self.load_and_run(program_text))
+        run_button.place(relwidth=1, relheight=1)
         
         root.mainloop()
+        
+    def load_and_run(self, program_text):
+        program_lines = program_text.get("1.0", tk.END).strip().split('\n')
+        self.load_program(program_lines)
+        self.run()
+           
+        sum_array = self.get_sum_of_10_elements()
+        self.display()
+        print("Sum Array:", sum_array)
+            
+        messagebox.showinfo("Simulation Complete", f"Clock cycles: {self.clock}\nSum_Array: {sum_array}")
+        
+       
 
 # Assembly Program with .data and .text
 example_program = [
