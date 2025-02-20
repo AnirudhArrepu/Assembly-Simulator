@@ -54,7 +54,8 @@ Course project - COA
 - special register: x31
 - instructions implemented: add addi sub la lw sw bne ble beq jal jr slt j li
 - implemented .word in data segment
-
+- code should have a .data and a .text segment to work
+- label should have the corresponding instruction for ease, label should be written as a standalone statement
 - memory starts being used from the end for storing .data segment values
 
 ### To Execute:
