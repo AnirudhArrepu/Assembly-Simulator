@@ -24,7 +24,7 @@ class Cores:
 
         opcode = parts[0]
 
-        if opcode == "ADDI":
+        if opcode == "ADDI"or opcode=="addi":
             rd, rs1, imm = int(parts[1][1:]), int(parts[2][1:]), int(parts[3], 0)
             self.registers[rd] = self.registers[rs1] + imm
        
@@ -41,20 +41,18 @@ class Cores:
             offset, rs1 = parts[2].split('(')
             rs1 = int(rs1[:-1][1:])
             mem_addr = self.registers[rs1] + int(offset)
-            mem_index = (mem_addr // 4)
+            mem_index = mem_addr // 4
             if 0 <= mem_index < len(data_mem):
-                 self.registers[rd] = data_mem[mem_index]
+                self.registers[rd] = data_mem[mem_index]
 
         elif opcode == "SW":
             rs2 = int(parts[1][1:])
             offset, rs1 = parts[2].split('(')
             rs1 = int(rs1[:-1][1:])
             mem_addr = self.registers[rs1] + int(offset)
-            core_index = (mem_addr // 4) % len(mem)  # Determine which core owns this address
-            core_mem_offset = (mem_addr // 4) // len(mem)
-            mem_index = (mem_addr // 4)
+            mem_index = mem_addr // 4
             if 0 <= mem_index < len(data_mem):
-                 data_mem[mem_index] = self.registers[rs2] 
+                data_mem[mem_index] = self.registers[rs2]
 
         elif opcode == "LA":
             rd = int(parts[1][1:])
@@ -63,6 +61,12 @@ class Cores:
 
         elif opcode == "J":
             label = parts[1]
+            self.pc = labels[label] - 1
+        
+        elif opcode == "JAL":
+            rd = int(parts[1][1:])
+            label = parts[2]
+            self.registers[rd] = self.pc + 1  # Store return address
             self.pc = labels[label] - 1
 
         elif opcode == "BEQ":
@@ -138,26 +142,16 @@ class Simulator:
         
         # Store data section into memory and record labels
         mem_address = 0
-        core_count = len(self.cores)
-        core_memory_size = len(self.data_memory) // core_count  # Each core gets a partition of memory
-
         for line in self.data_section:
-               parts = line.split()
-    
-               if len(parts) >= 3 and parts[1] == ".word":
-                  label = parts[0][:-1]  # Remove colon from label
-                  self.labels[label] = mem_address  # Store label's memory location
-                  words = parts[2:]  # Extract words to store
-        
-                  for word in words:
-                        core_index = (mem_address // 4) % core_count  # Determine which core owns this memory
-                        core_memory_offset = (mem_address // 4) // core_count  # Offset within core's memory
-
-                        mem_index = self.cores[core_index].mem_start + core_memory_offset  # Absolute memory index
-                        self.data_memory[mem_index] = int(word, 0)  # Store value in correct core’s memory
-            
-                        mem_address += 4  # Move to next memory address
-
+            parts = line.split()
+            if len(parts) >= 3 and parts[1] == ".word":
+                label = parts[0][:-1]
+                self.labels[label] = mem_address // 4
+                words = parts[2:]
+                for word in words:
+                    data_index = mem_address // 4
+                    self.data_memory[data_index] = int(word,16)
+                    mem_address += 4
         
         # Record labels in the text section
         for idx, line in enumerate(self.text_section):
@@ -166,6 +160,7 @@ class Simulator:
                 self.labels[label] = idx
 
         self.program = self.text_section
+
 
     def run(self):
         try:
@@ -180,12 +175,15 @@ class Simulator:
         print("\n=== Register States ===")
         for i, core in enumerate(self.cores):
             print(f"Core {i}: {core.registers}")
-
-        print("\n=== Data Memory ===")
-        for i in range(4):
+        
+        
+        print("\n=== Data Memory for Each Core ===")
+    
+        for i in range(4):  # Loop over each core
             start = i * 1024 // 4
             end = start + 1024 // 4
-            print(f"Core {i} Memory: {self.memory[start:end]}")
+            print(f"Core {i} Memory: {self.data_memory[start:end]}")
+
 
         plt.figure(figsize=(16, 8))
         data = np.array([self.cores[i].registers for i in range(4)])
@@ -199,7 +197,10 @@ class Simulator:
         plt.show()
 
     def get_sorted_array(self):
-        return self.data_memory[:20]
+        sorted_array = []
+        for i in range(20):
+            sorted_array.append(self.data_memory[i])
+        return sorted_array
     
     def show_gui(self):
         root = tk.Tk()
@@ -214,9 +215,11 @@ class Simulator:
             program_lines = program_text.get("1.0", tk.END).strip().split('\n')
             self.load_program(program_lines)
             self.run()
-            self.display()
+           
             sorted_array = self.get_sorted_array()
+            self.display()
             print("Sorted Array:", sorted_array)
+            
             messagebox.showinfo("Simulation Complete", f"Clock cycles: {self.clock}\nSorted Array: {sorted_array}")
         
         run_button = tk.Button(root, text="Run", command=load_and_run)
@@ -227,9 +230,9 @@ class Simulator:
 # Assembly Program with .data and .text
 example_program = [
     ".data",
-    "arr: .word 3 2 8 7 6 10 14 15 1 4",
+    "arr: .word 0x3 0x2 0x8 0x7 0x6 0x10 0x14 0x15 0x1 0x4",
     ".text",
-    "ADDI X2,X0 10",  # no. of elements
+    "addi X2,X0 10",  # no. of elements
     "ADDI X1 X2 -1",  # n-1
     "ADDI X4 X0 0",   # outer loop i value
     "LA X3 arr",
