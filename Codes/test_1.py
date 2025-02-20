@@ -225,7 +225,7 @@ class Simulator:
             self.display()
             print("Sum Array:", sum_array)
             
-            messagebox.showinfo("Simulation Complete", f"Clock cycles: {self.clock}\nSorted Array: {sorted_array}")
+            messagebox.showinfo("Simulation Complete", f"Clock cycles: {self.clock}\nSum_Array: {sum_array}")
         
         run_button = tk.Button(root, text="Run", command=load_and_run)
         run_button.pack()
