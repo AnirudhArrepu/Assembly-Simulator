@@ -27,7 +27,8 @@ Course project - COA
 
 5.  - Date: 11-02-2025
     - Memebers: Anirudh A, Raghavendra P
-    - Decision:
+    - Decision: Realised array indexing is 1, but addi can also perform arithmetic operations and hence differentiating logical and pointer arithmetic will not be possible.
+    Hence made memory of 4*x allocations, index belonging to its module 4 coreid.
 
 6.  - Date: 09-02-2025
     - Memebers: Anirudh A, Raghavendra P
@@ -47,3 +48,21 @@ Course project - COA
     - Decision: Decided to complete and build the GPU simulator with `python` language since,
       1.Python has a simpler syntax compared to C/C++, making it easier to implement and understand complex GPU architectures.
       2.Python has great visualization tools like Matplotlib and Seaborn, which help analyze performance metrics.
+
+
+### Note:
+- special register: x31
+- instructions implemented: add addi sub la lw sw bne ble beq jal jr slt j li
+- implemented .word in data segment
+
+- memory starts being used from the end for storing .data segment values
+
+### To Execute:
+
+```cmd
+cd Codes
+cd Backend
+pip install -r requirements.txt
+python simulator.py
+Open 127.0.0.1:5000 in browser
+```
