@@ -65,11 +65,11 @@ cd Codes
 cd Backend
 pip install -r requirements.txt
 python simulator.py
-Open 127.0.0.1:5000 in browser
+Open 1270.0.1:5000 in browser
 ```
 
 - File Reading: change assembly.asm
-```codes
+```bash
 cd Codes
 cd Backend
 pip install -r requirements.txt
