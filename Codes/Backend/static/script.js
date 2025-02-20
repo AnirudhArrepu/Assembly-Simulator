@@ -26,7 +26,7 @@ function runProgram() {
     })
         .then((response) => response.json())
         .then((data) => {
-            consoleOutput.value = `Clock cycles: ${data.clock}\n\n Memory1: ${data.memory1}\n\nMemory2: ${data.memory2}\n\nMemory3: ${data.memory3}\n\nMemory4: ${data.memory4}\n\n`;
+            consoleOutput.value = `Clock cycles: ${data.clock}\n\nCore0Reg: ${data.core0}\n\nCore1Reg: ${data.core1}\n\nCore2Reg: ${data.core2}\n\nCore3Reg: ${data.core3}\n\n Memory1: ${data.memory1}\n\nMemory2: ${data.memory2}\n\nMemory3: ${data.memory3}\n\nMemory4: ${data.memory4}\n\n`;
 
             // ✅ Show register values for core0
             if (data.core0) {

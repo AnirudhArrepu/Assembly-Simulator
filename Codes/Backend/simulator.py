@@ -36,7 +36,7 @@ class Core:
 
         # print(inst)
         # print(self.pc)
-        if(inst[0] == "la"): # la rs, data
+        if(inst[0].lower() == "la"): # la rs, data
             rs = int(inst[1][1:])
             data = inst[2]
             for val in self.data_segment[data]:
@@ -47,7 +47,7 @@ class Core:
             self.registers[rs] = self.memory_data_index + 4
             self.pc+=1
 
-        elif(inst[0] == "add"): # add rd, rs1, rs2
+        elif(inst[0].lower() == "add"): # add rd, rs1, rs2
             rd = int(inst[1][1:])
             rs1 = int(inst[2][1:])
             rs2 = int(inst[3][1:])
@@ -55,7 +55,7 @@ class Core:
             self.registers[rd] = self.registers[rs1] + self.registers[rs2]
             self.pc+=1
 
-        elif(inst[0] == "addi"): # addi rd, rs1, imm
+        elif(inst[0].lower() == "addi"): # addi rd, rs1, imm
             rd = int(inst[1][1:])
             rs1 = int(inst[2][1:])
             imm = int(inst[3])
@@ -63,7 +63,7 @@ class Core:
             self.registers[rd] = self.registers[rs1] + imm
             self.pc+=1
 
-        elif(inst[0] == "sub"): # sub rd, rs1, rs2
+        elif(inst[0].lower() == "sub"): # sub rd, rs1, rs2
             rd = int(inst[1][1:])
             rs1 = int(inst[2][1:])
             rs2 = int(inst[3][1:])
@@ -71,7 +71,7 @@ class Core:
             self.registers[rd] = self.registers[rs1] - self.registers[rs2]
             self.pc+=1
         
-        elif(inst[0] == "lw"): #lw rd offest(rs1)
+        elif(inst[0].lower() == "lw"): #lw rd offest(rs1)
             print(inst)
             rd = int(inst[1][1:])
             offset, rs1 = inst[2].split('(')
@@ -84,7 +84,7 @@ class Core:
             print(self.registers[rs1])
             print(self.registers[rd])
             
-        elif(inst[0] == "sw"): #sw rs1 offest(rd)
+        elif(inst[0].lower() == "sw"): #sw rs1 offest(rd)
             print(inst)
             rs1 = int(inst[1][1:])
             offset, rd = inst[2].split('(')
@@ -98,7 +98,7 @@ class Core:
             print(self.registers[rd])
             print(self.registers[rs1])
             
-        elif(inst[0] == "bne"): #bne rs1, rs2, label
+        elif(inst[0].lower() == "bne"): #bne rs1, rs2, label
             rs1 = int(inst[1][1:])
             rs2 = int(inst[2][1:])
             label = inst[3]
@@ -109,7 +109,7 @@ class Core:
             else:
                 self.pc+=1
 
-        elif(inst[0] == "ble"): #ble rs1, rs2, label
+        elif(inst[0].lower() == "ble"): #ble rs1, rs2, label
             rs1 = int(inst[1][1:])
             rs2 = int(inst[2][1:])
             label = inst[3]
@@ -120,7 +120,7 @@ class Core:
             else:
                 self.pc+=1
 
-        elif(inst[0] == "beq"): #bne rs1, rs2, label
+        elif(inst[0].lower() == "beq"): #bne rs1, rs2, label
             rs1 = int(inst[1][1:])
             rs2 = int(inst[2][1:])
             label = inst[3]
@@ -131,7 +131,7 @@ class Core:
             else:
                 self.pc+=1
 
-        elif(inst[0] == "jal"): #jal rd, label
+        elif(inst[0].lower() == "jal"): #jal rd, label
             rd = int(inst[1][1:])
             label = inst[2]
 
@@ -139,22 +139,22 @@ class Core:
             self.pc = self.program_label_map[label]
             # print(self.pc)
 
-        elif(inst[0] == "jr"): #jr rs1
+        elif(inst[0].lower() == "jr"): #jr rs1
             rs1 = int(inst[1][1:])
 
             self.pc = self.registers[rs1]
 
-        elif inst[0] == "slt":  # slt rd, rs1, rs2
+        elif inst[0].lower() == "slt":  # slt rd, rs1, rs2
             rd = int(inst[1][1:])
             rs1 = int(inst[2][1:])
             rs2 = int(inst[3][1:])
             self.registers[rd] = 1 if self.registers[rs1] < self.registers[rs2] else 0
             self.pc += 1
 
-        elif inst[0] == "j":  # j label  (unconditional jump: equivalent to jal x0, label)
+        elif inst[0].lower() == "j":  # j label equivalent to jal x0, label
             label = inst[1]
             self.pc = self.program_label_map[label]
-        
+
         else: 
             print("instruction not defined", inst[0], self.pc)
 
@@ -224,40 +224,42 @@ class Simulator:
             
             self.clock += 1
 
-program = '''
-.data
-arr: .word 0x144 0x3 0x9 0x8 0x1 0x100
+# program = '''
+# .data
+# arr: .word 0x144 0x3 0x9 0x8 0x1 0x100
 
-.text
-la x3 arr
-addi x4 x0 6
-addi x7 x0 0
-outer_loop: addi x11 x4 -1
-beq x7 x11 outer_exit
-addi x10 x3 0
-addi x8 x0 0
-inner_loop: addi x12 x4 0
-sub x12 x12 x7
-addi x12 x12 -1
-beq x8 x12 inner_exit
-lw x5 0(x10)
-lw x6 4(x10)
-slt x11 x6 x5
-beq x11 x0 no_swap
-sw x5 4(x10)
-sw x6 0(x10)
-no_swap: addi x10 x10 4
-addi x8 x8 1
-j inner_loop
-inner_exit: addi x7 x7 1
-j outer_loop
-outer_exit: j exit
-exit: addi x0 x0 0
-'''
+# .text
+# la x3 arr
+# addi x4 x0 6
+# addi x7 x0 0
+# outer_loop: addi x11 x4 -1
+# beq x7 x11 outer_exit
+# addi x10 x3 0
+# addi x8 x0 0
+# inner_loop: addi x12 x4 0
+# sub x12 x12 x7
+# addi x12 x12 -1
+# beq x8 x12 inner_exit
+# lw x5 0(x10)
+# lw x6 4(x10)
+# slt x11 x6 x5
+# beq x11 x0 no_swap
+# sw x5 4(x10)
+# sw x6 0(x10)
+# no_swap: addi x10 x10 4
+# addi x8 x8 1
+# j inner_loop
+# inner_exit: addi x7 x7 1
+# j outer_loop
+# outer_exit: j exit
+# exit: addi x0 x0 0
+# '''
 
 
 def preprocess(program):
     #getting data segment
+    program = program.lower()
+    program = program.replace(",", "")
     programs = program.split(".text")
     programs_data = programs[0].split(".data")[1].split("\n")
     programs_data = [inst for inst in programs_data if inst != '']
