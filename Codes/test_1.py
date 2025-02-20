@@ -161,6 +161,11 @@ class Simulator:
 
         self.program = self.text_section
 
+        # Load the same program into each core
+        for core in self.cores:
+            core.pc = 0  # Reset the program counter for each core
+            core.registers = [0] * 32  # Reset registers for each core
+            core.registers[31] = core.coreid  # Core ID Register (Read-Only)
 
     def run(self):
         try:
@@ -182,6 +187,8 @@ class Simulator:
         for i in range(4):  # Loop over each core
             start = i * 1024 // 4
             end = start + 1024 // 4
+            if i != 0:  
+                self.data_memory[start:end] = self.data_memory[0:1024 // 4]
             print(f"Core {i} Memory: {self.data_memory[start:end]}")
 
 
@@ -198,7 +205,7 @@ class Simulator:
 
     def get_sorted_array(self):
         sorted_array = []
-        for i in range(20):
+        for i in range(10):
             sorted_array.append(self.data_memory[i])
         return sorted_array
     

@@ -12,8 +12,7 @@ class Cores:
         self.mem_start = mem_start
         self.mem_size = mem_size
         
-    
-    def execute(self, pgm, mem):
+    def execute(self, pgm, mem, data_mem, labels):
         if self.pc >= len(pgm):
             return
         
@@ -24,74 +23,52 @@ class Cores:
             return
 
         opcode = parts[0]
-        
-        # ADDI X1 X2 IMM
-        if opcode == "ADDI":
-            rd = int(parts[1][1:])
-            rs1 = int(parts[2][1:])
-            imm = int(parts[3], 0)  # Handle hexadecimal and decimal values
+
+        if opcode == "ADDI"or opcode=="addi":
+            rd, rs1, imm = int(parts[1][1:]), int(parts[2][1:]), int(parts[3], 0)
             self.registers[rd] = self.registers[rs1] + imm
        
-        # ADD X1 X2 X3
         elif opcode == "ADD":
-            rd = int(parts[1][1:])
-            rs1 = int(parts[2][1:])
-            rs2 = int(parts[3][1:])
+            rd, rs1, rs2 = int(parts[1][1:]), int(parts[2][1:]), int(parts[3][1:])
             self.registers[rd] = self.registers[rs1] + self.registers[rs2]
        
-        # SUB X1 X2 X3
         elif opcode == "SUB":
-            rd = int(parts[1][1:])
-            rs1 = int(parts[2][1:])
-            rs2 = int(parts[3][1:])
+            rd, rs1, rs2 = int(parts[1][1:]), int(parts[2][1:]), int(parts[3][1:])
             self.registers[rd] = self.registers[rs1] - self.registers[rs2]
+
+        elif opcode == "LW":
+            rd = int(parts[1][1:])
+            offset, rs1 = parts[2].split('(')
+            rs1 = int(rs1[:-1][1:])
+            mem_addr = self.registers[rs1] + int(offset)
+            mem_index = mem_addr // 4
+            if 0 <= mem_index < len(data_mem):
+                self.registers[rd] = data_mem[mem_index]
+
+        elif opcode == "SW":
+            rs2 = int(parts[1][1:])
+            offset, rs1 = parts[2].split('(')
+            rs1 = int(rs1[:-1][1:])
+            mem_addr = self.registers[rs1] + int(offset)
+            mem_index = mem_addr // 4
+            if 0 <= mem_index < len(data_mem):
+                data_mem[mem_index] = self.registers[rs2]
+
+        elif opcode == "LA":
+            rd = int(parts[1][1:])
+            label = parts[2]
+            self.registers[rd] = labels[label]
+
+        elif opcode == "J":
+            label = parts[1]
+            self.pc = labels[label] - 1
         
-        # BNE X1 X2 LABEL
-        elif opcode == "BNE":
-            rs1 = int(parts[1][1:])
-            rs2 = int(parts[2][1:])
-            label = parts[3]
-            if self.registers[rs1] != self.registers[rs2]:
-                self.pc = labels[label] - 1
-        
-        # JAL X1 LABEL
         elif opcode == "JAL":
             rd = int(parts[1][1:])
             label = parts[2]
             self.registers[rd] = self.pc + 1  # Store return address
             self.pc = labels[label] - 1
 
-        elif opcode == "J":
-            label = parts[1]
-            self.pc = labels[label] - 1
-        
-        # LW X1 OFFSET(X2)
-        elif opcode == "LW":
-            rd = int(parts[1][1:])  # Destination register
-            offset, rs1 = parts[2].split('(')  # Split at '(' to get offset and register
-            rs1 = int(rs1[:-1][1:])  # Remove closing parenthesis and 'X'
-            mem_addr = self.registers[rs1] + int(offset)  # Calculate memory address
-            mem_index = (self.mem_start + (mem_addr // 4)) 
-            self.registers[rd] = mem[mem_index]  # Load from memory to register
-            
-        # SW X1 OFFSET(X2)
-        elif opcode == "SW":
-            rs2 = int(parts[1][1:])  # Source register to be stored
-            offset, rs1 = parts[2].split('(')  # Split at '(' to get offset and register
-            rs1 = int(rs1[:-1][1:])  # Remove closing parenthesis and 'X'
-            mem_addr = self.registers[rs1] + int(offset)  # Calculate memory address
-            mem_index = (self.mem_start + (mem_addr // 4)) 
-            mem[mem_index] = self.registers[rs2]  # Store register value in memory
-
-        # BLE X1 X2 LABEL
-        elif opcode == "BLE":
-            rs1 = int(parts[1][1:])
-            rs2 = int(parts[2][1:])
-            label = parts[3]
-            if self.registers[rs1] <= self.registers[rs2]:
-                self.pc = labels[label] - 1
-
-        # BEQ X1 X2 LABEL
         elif opcode == "BEQ":
             rs1 = int(parts[1][1:])
             rs2 = int(parts[2][1:])
@@ -99,17 +76,12 @@ class Cores:
             if self.registers[rs1] == self.registers[rs2]:
                 self.pc = labels[label] - 1
 
-        # LA X1 LABEL
-        elif opcode == "LA":
-            rd = int(parts[1][1:])
-            label = parts[2]
-            self.registers[rd] = labels[label]
-
-        # LI X1 IMM
-        elif opcode == "LI":
-            rd = int(parts[1][1:])
-            imm = int(parts[2], 0)  # Handle hexadecimal values
-            self.registers[rd] = imm
+        elif opcode == "BLE":
+            rs1 = int(parts[1][1:])
+            rs2 = int(parts[2][1:])
+            label = parts[3]
+            if self.registers[rs1] <= self.registers[rs2]:
+                self.pc = labels[label] - 1
 
         # ECALL
         elif opcode == "ECALL":
@@ -126,56 +98,106 @@ class Cores:
 
         self.pc += 1
 
+
 class Simulator:
     def __init__(self):
-        self.total_memory = 4096  # Total memory size in bytes
-        self.memory = [0] * (self.total_memory // 4)  # 4KB Shared Memory (4 bytes per entry)
+        self.total_memory = 4096  # 4KB total memory
+        self.memory = [0] * (self.total_memory // 4)
+        self.data_memory = [0] * (self.total_memory // 4)  # Separate data section
         self.clock = 0
         self.cores = []
-        core_memory_size = self.total_memory //4 //4   # Divide memory among 4 cores
+        core_memory_size = self.total_memory // 4 // 4  # Split memory for 4 cores
         for i in range(4):
             self.cores.append(Cores(i, i * core_memory_size, core_memory_size))
         self.program = []
+        
+        self.data_section = []
+        self.text_section = []
+        self.labels = {}
 
     def load_program(self, program_lines):
-        global labels
-        labels = {}
         self.program = []
-        for idx, line in enumerate(program_lines):
+        self.data_section = []
+        self.text_section = []
+        self.labels = {}
+        in_data = False
+        in_text = False
+
+        for line in program_lines:
             line = line.strip()
-            if line.endswith(":"):
-                labels[line[:-1]] = len(self.program)
-            else:
-                self.program.append(line)
+            
+            if line == ".data":
+                in_data = True
+                in_text = False
+                continue
+            elif line == ".text":
+                in_data = False
+                in_text = True
+                continue
+            
+            if in_data:
+                self.data_section.append(line)
+            elif in_text:
+                self.text_section.append(line)
         
+        # Store data section into memory and record labels
+        mem_address = 0
+        for line in self.data_section:
+            parts = line.split()
+            if len(parts) >= 3 and parts[1] == ".word":
+                label = parts[0][:-1]
+                self.labels[label] = mem_address // 4
+                words = parts[2:]
+                for word in words:
+                    data_index = mem_address // 4
+                    self.data_memory[data_index] = int(word,16)
+                    mem_address += 4
+        
+        # Record labels in the text section
+        for idx, line in enumerate(self.text_section):
+            if line.endswith(":"):
+                label = line[:-1]
+                self.labels[label] = idx
+
+        self.program = self.text_section
+
+        # Load the same program into each core
+        for core in self.cores:
+            core.pc = 0  # Reset the program counter for each core
+            core.registers = [0] * 32  # Reset registers for each core
+            core.registers[31] = core.coreid  # Core ID Register (Read-Only)
+
     def run(self):
         try:
             while any(core.pc < len(self.program) for core in self.cores):
                 for core in self.cores:
-                    core.execute(self.program, self.memory)
+                    core.execute(self.program, self.memory, self.data_memory, self.labels)
                 self.clock += 1
         except KeyboardInterrupt:
             print("Simulation interrupted.")
-        
+
     def display(self):
-        
         print("\n=== Register States ===")
         for i, core in enumerate(self.cores):
             print(f"Core {i}: {core.registers}")
         
-        print("\n=== Shared Memory ===")
-        for i in range(4):
+        
+        print("\n=== Data Memory for Each Core ===")
+    
+        for i in range(4):  # Loop over each core
             start = i * 1024 // 4
             end = start + 1024 // 4
-            print(f"Core {i} Memory: {self.memory[start:end]}")
-        
-        # Visualization
+            if i != 0:  
+                self.data_memory[start:end] = self.data_memory[0:1024 // 4]
+            print(f"Core {i} Memory: {self.data_memory[start:end]}")
+
+
         plt.figure(figsize=(16, 8))
         data = np.array([self.cores[i].registers for i in range(4)])
         plt.imshow(data, cmap="Blues", aspect='auto')
         for i in range(4):
             for j in range(32):
-                plt.text(j, i, str(self.cores[i].registers[j]), 
+                plt.text(j, i, str(self.cores[i].registers[j]),
                          ha='center', va='center', color='black')
         plt.title("Register States of 4 Cores")
         plt.axis('off')
@@ -183,71 +205,49 @@ class Simulator:
 
     def get_sorted_array(self):
         sorted_array = []
-        for i in range(20):
-            sorted_array.append(self.memory[i])
+        for i in range(10):
+            sorted_array.append(self.data_memory[i])
         return sorted_array
-
+    
     def show_gui(self):
         root = tk.Tk()
         root.title("4-Core Simulator")
         
-        # Text box for program input
         program_label = tk.Label(root, text="Program:")
         program_label.pack()
         program_text = tk.Text(root, height=10, width=50)
         program_text.pack()
         
-        # Button to load and run the program
         def load_and_run():
             program_lines = program_text.get("1.0", tk.END).strip().split('\n')
             self.load_program(program_lines)
             self.run()
-            self.display()
+           
             sorted_array = self.get_sorted_array()
+            self.display()
             print("Sorted Array:", sorted_array)
-            messagebox.showinfo("Simulation Complete", f"Number of clock cycles: {self.clock}\nSorted Array: {sorted_array}")
+            
+            messagebox.showinfo("Simulation Complete", f"Clock cycles: {self.clock}\nSorted Array: {sorted_array}")
         
         run_button = tk.Button(root, text="Run", command=load_and_run)
         run_button.pack()
         
         root.mainloop()
 
-# Example Program with Bubble Sort
+# Assembly Program with .data and .text
 example_program = [
-    "ADDI X2,X0 20",  # no. of elements
+    ".data",
+    "arr: .word 0x3 0x2 0x8 0x7 0x6 0x10 0x14 0x15 0x1 0x4",
+    ".text",
+    "addi X2,X0 10",  # no. of elements
     "ADDI X1 X2 -1",  # n-1
     "ADDI X4 X0 0",   # outer loop i value
-
-    # Initialize array in memory
-    "LI X3 0",
-    "LI X10 0x3", "SW X10 0(X3)",
-    "LI X10 0x2", "SW X10 4(X3)",
-    "LI X10 0x0", "SW X10 8(X3)",
-    "LI X10 0x5", "SW X10 12(X3)",
-    "LI X10 0x1", "SW X10 16(X3)",
-    "LI X10 0x7", "SW X10 20(X3)",
-    "LI X10 0xB", "SW X10 24(X3)",
-    "LI X10 0x13", "SW X10 28(X3)",
-    "LI X10 0x8", "SW X10 32(X3)",
-    "LI X10 0x14", "SW X10 36(X3)",
-    "LI X10 0x4", "SW X10 40(X3)",
-    "LI X10 0x6", "SW X10 44(X3)",
-    "LI X10 0x9", "SW X10 48(X3)",
-    "LI X10 0xA", "SW X10 52(X3)",
-    "LI X10 0xC", "SW X10 56(X3)",
-    "LI X10 0xD", "SW X10 60(X3)",
-    "LI X10 0xE", "SW X10 64(X3)",
-    "LI X10 0xF", "SW X10 68(X3)",
-    "LI X10 0x10", "SW X10 72(X3)",
-    "LI X10 0x11", "SW X10 76(X3)",
-
-    # Bubble Sort
+    "LA X3 arr",
     "OUTER_LOOP:",
     "BEQ X4 X1 EXIT1",
     "SUB X5 X1 X4",            # n-1-i
     "ADDI X6 X0 0",            # inner loop j value
-    "LI X3 0",                 # reset X3 to the start of the array at the beginning of each outer loop 
-
+    "LA X3 arr",               # reset X3 to the start of the array at the beginning of each outer loop 
     "INNER_LOOP:",
     "LW X7 0(X3)",
     "LW X8 4(X3)",
@@ -259,11 +259,9 @@ example_program = [
     "ADDI X3 X3 4",   # move to the next element in the array
     "ADDI X6 X6 1",   # increment inner loop counter
     "J INNER_LOOP",
-
     "EXIT2:",
     "ADDI X4 X4 1",   # increment outer loop counter
     "J OUTER_LOOP",
-
     "EXIT1:",
     "LI A7 10",
     "ECALL"
