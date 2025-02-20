@@ -155,6 +155,12 @@ class Core:
             label = inst[1]
             self.pc = self.program_label_map[label]
 
+        elif inst[0].lower() == "li":  # li rd, imm
+            rd = int(inst[1][1:])
+            imm = int(inst[2])
+            self.registers[rd] = imm
+            self.pc += 1
+
         else: 
             print("instruction not defined", inst[0], self.pc)
 
