@@ -2,7 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 import matplotlib.pyplot as plt
 import numpy as np
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 
 class Core:
@@ -291,10 +291,15 @@ def main(program):
 app = Flask(__name__)
 CORS(app)
 
+@app.route('/')
+def index():
+    return render_template('gui.html')
+
 @app.route('/simulate', methods=['POST'])
 def simulate():
     data = request.json
     program = data['program']
+    print(program)
     sim = main(program)
 
     memories = sim.memory.printMemory()
@@ -305,10 +310,11 @@ def simulate():
         'core2': sim.cores[2].registers,
         'core3': sim.cores[3].registers,
         'clock': sim.clock,
-        'memory1': memories[0]
-        'memory2': memories[1]
-        'memory3': memories[2]
-        'memory4': memories[3]
+        'memorys': memories,
+        'memory1': memories[0],
+        'memory2': memories[1],
+        'memory3': memories[2],
+        'memory4': memories[3],
     })
 
 if __name__ == "__main__":
