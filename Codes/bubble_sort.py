@@ -28,15 +28,15 @@ class Cores:
             rd, rs1, imm = int(parts[1][1:]), int(parts[2][1:]), int(parts[3], 0)
             self.registers[rd] = self.registers[rs1] + imm
        
-        elif opcode == "ADD":
+        elif opcode == "ADD" or opcode=="add":
             rd, rs1, rs2 = int(parts[1][1:]), int(parts[2][1:]), int(parts[3][1:])
             self.registers[rd] = self.registers[rs1] + self.registers[rs2]
        
-        elif opcode == "SUB":
+        elif opcode == "SUB"or opcode=="sub":
             rd, rs1, rs2 = int(parts[1][1:]), int(parts[2][1:]), int(parts[3][1:])
             self.registers[rd] = self.registers[rs1] - self.registers[rs2]
 
-        elif opcode == "LW":
+        elif opcode == "LW" or opcode=="lw":
             rd = int(parts[1][1:])
             offset, rs1 = parts[2].split('(')
             rs1 = int(rs1[:-1][1:])
@@ -45,7 +45,7 @@ class Cores:
             if 0 <= mem_index < len(data_mem):
                 self.registers[rd] = data_mem[mem_index]
 
-        elif opcode == "SW":
+        elif opcode == "SW"or opcode=="sw":
             rs2 = int(parts[1][1:])
             offset, rs1 = parts[2].split('(')
             rs1 = int(rs1[:-1][1:])
@@ -54,29 +54,29 @@ class Cores:
             if 0 <= mem_index < len(data_mem):
                 data_mem[mem_index] = self.registers[rs2]
 
-        elif opcode == "LA":
+        elif opcode == "LA"or opcode=="la":
             rd = int(parts[1][1:])
             label = parts[2]
             self.registers[rd] = labels[label]
 
-        elif opcode == "J":
+        elif opcode == "J"or opcode=="j":
             label = parts[1]
             self.pc = labels[label] - 1
         
-        elif opcode == "JAL":
+        elif opcode == "JAL"or opcode=="jal":
             rd = int(parts[1][1:])
             label = parts[2]
             self.registers[rd] = self.pc + 1  # Store return address
             self.pc = labels[label] - 1
 
-        elif opcode == "BEQ":
+        elif opcode == "BEQ"or opcode=="beq":
             rs1 = int(parts[1][1:])
             rs2 = int(parts[2][1:])
             label = parts[3]
             if self.registers[rs1] == self.registers[rs2]:
                 self.pc = labels[label] - 1
 
-        elif opcode == "BLE":
+        elif opcode == "BLE"or opcode=="ble":
             rs1 = int(parts[1][1:])
             rs2 = int(parts[2][1:])
             label = parts[3]
@@ -84,7 +84,7 @@ class Cores:
                 self.pc = labels[label] - 1
 
         # ECALL
-        elif opcode == "ECALL":
+        elif opcode == "ECALL"or opcode=="ecall":
             a7 = self.registers[17]
             a0 = self.registers[10]
             if a7 == 1:
@@ -97,7 +97,6 @@ class Cores:
                 print(s, end='')
 
         self.pc += 1
-
 
 class Simulator:
     def __init__(self):

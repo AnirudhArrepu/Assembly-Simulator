@@ -28,15 +28,15 @@ class Cores:
             rd, rs1, imm = int(parts[1][1:]), int(parts[2][1:]), int(parts[3], 0)
             self.registers[rd] = self.registers[rs1] + imm
        
-        elif opcode == "ADD":
+        elif opcode == "ADD" or opcode=="add":
             rd, rs1, rs2 = int(parts[1][1:]), int(parts[2][1:]), int(parts[3][1:])
             self.registers[rd] = self.registers[rs1] + self.registers[rs2]
        
-        elif opcode == "SUB":
+        elif opcode == "SUB"or opcode=="sub":
             rd, rs1, rs2 = int(parts[1][1:]), int(parts[2][1:]), int(parts[3][1:])
             self.registers[rd] = self.registers[rs1] - self.registers[rs2]
 
-        elif opcode == "LW":
+        elif opcode == "LW" or opcode=="lw":
             rd = int(parts[1][1:])
             offset, rs1 = parts[2].split('(')
             rs1 = int(rs1[:-1][1:])
@@ -45,7 +45,7 @@ class Cores:
             if 0 <= mem_index < len(data_mem):
                 self.registers[rd] = data_mem[mem_index]
 
-        elif opcode == "SW":
+        elif opcode == "SW"or opcode=="sw":
             rs2 = int(parts[1][1:])
             offset, rs1 = parts[2].split('(')
             rs1 = int(rs1[:-1][1:])
@@ -54,29 +54,29 @@ class Cores:
             if 0 <= mem_index < len(data_mem):
                 data_mem[mem_index] = self.registers[rs2]
 
-        elif opcode == "LA":
+        elif opcode == "LA"or opcode=="la":
             rd = int(parts[1][1:])
             label = parts[2]
             self.registers[rd] = labels[label]
 
-        elif opcode == "J":
+        elif opcode == "J"or opcode=="j":
             label = parts[1]
             self.pc = labels[label] - 1
         
-        elif opcode == "JAL":
+        elif opcode == "JAL"or opcode=="jal":
             rd = int(parts[1][1:])
             label = parts[2]
             self.registers[rd] = self.pc + 1  # Store return address
             self.pc = labels[label] - 1
 
-        elif opcode == "BEQ":
+        elif opcode == "BEQ"or opcode=="beq":
             rs1 = int(parts[1][1:])
             rs2 = int(parts[2][1:])
             label = parts[3]
             if self.registers[rs1] == self.registers[rs2]:
                 self.pc = labels[label] - 1
 
-        elif opcode == "BLE":
+        elif opcode == "BLE"or opcode=="ble":
             rs1 = int(parts[1][1:])
             rs2 = int(parts[2][1:])
             label = parts[3]
@@ -84,7 +84,7 @@ class Cores:
                 self.pc = labels[label] - 1
 
         # ECALL
-        elif opcode == "ECALL":
+        elif opcode == "ECALL"or opcode=="ecall":
             a7 = self.registers[17]
             a0 = self.registers[10]
             if a7 == 1:
@@ -203,11 +203,9 @@ class Simulator:
         plt.axis('off')
         plt.show()
 
-    def get_sorted_array(self):
-        sorted_array = []
-        for i in range(10):
-            sorted_array.append(self.data_memory[i])
-        return sorted_array
+    def get_sum_of_10_elements(self):
+          return sum(self.data_memory[:10])  # Sum of the first 10 elements
+
     
     def show_gui(self):
         root = tk.Tk()
@@ -223,9 +221,9 @@ class Simulator:
             self.load_program(program_lines)
             self.run()
            
-            sorted_array = self.get_sorted_array()
+            sum_array = self.get_sum_of_10_elements()
             self.display()
-            print("Sorted Array:", sorted_array)
+            print("Sum Array:", sum_array)
             
             messagebox.showinfo("Simulation Complete", f"Clock cycles: {self.clock}\nSorted Array: {sorted_array}")
         
@@ -239,32 +237,27 @@ example_program = [
     ".data",
     "arr: .word 0x3 0x2 0x8 0x7 0x6 0x10 0x14 0x15 0x1 0x4",
     ".text",
-    "addi X2,X0 10",  # no. of elements
-    "ADDI X1 X2 -1",  # n-1
-    "ADDI X4 X0 0",   # outer loop i value
-    "LA X3 arr",
-    "OUTER_LOOP:",
-    "BEQ X4 X1 EXIT1",
-    "SUB X5 X1 X4",            # n-1-i
-    "ADDI X6 X0 0",            # inner loop j value
-    "LA X3 arr",               # reset X3 to the start of the array at the beginning of each outer loop 
-    "INNER_LOOP:",
-    "LW X7 0(X3)",
-    "LW X8 4(X3)",
-    "BEQ X6 X5 EXIT2",
-    "BLE X7 X8 NO_SWAP",
-    "SW X8 0(X3)",
-    "SW X7 4(X3)",
-    "NO_SWAP:",
-    "ADDI X3 X3 4",   # move to the next element in the array
-    "ADDI X6 X6 1",   # increment inner loop counter
-    "J INNER_LOOP",
-    "EXIT2:",
-    "ADDI X4 X4 1",   # increment outer loop counter
-    "J OUTER_LOOP",
-    "EXIT1:",
-    "LI A7 10",
-    "ECALL"
+        "ADDI X2, X0, 10",  # Number of elements
+    "ADDI X4, X0, 0",   # Loop counter i = 0
+    "LA X3, arr",       # Load base address of arr into X3
+    "ADDI X5, X0, 0",   # Initialize sum register (X5) to 0
+
+    "SUM_LOOP:",
+    "BEQ X4, X2, EXIT",  # If i == 10, exit
+    "LW X6, 0(X3)",      # Load arr[i] into X6
+    "add X5,X5, X6",    # sum += arr[i]
+    "ADDI X3, X3, 4",    # Move to the next element in arr
+    "ADDI X4, X4, 1",    # Increment loop counter
+    "J SUM_LOOP",        # Jump to SUM_LOOP
+
+    "EXIT:",
+    "MV A0, X5",         # Move sum result to A0 for printing
+    "LI A7, 1",          # Syscall for print integer
+    "ECALL",             # Call syscall to print sum
+
+    "LI A7, 10",         # Exit syscall
+    "ECALL"  
+
 ]
 
 # Initialize and Run Simulator
@@ -274,5 +267,5 @@ sim.run()
 print(f"Number of clock cycles: {sim.clock}")
 sim.display()
 sim.show_gui()
-sorted_array = sim.get_sorted_array()
-print("Sorted Array:", sorted_array)
+sum_array = sim.get_sum_of_10_elements()
+print("Sum Array:", sum_array)
