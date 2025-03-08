@@ -19,16 +19,16 @@ Course project - COA
 
 3.  - Date: 15-02-2025
     - Memebers: Anirudh A, Raghavendra P
-    - Decision: The team tested the code with various programs using the data segment format. We verified the correct addressing of arrays and successfully obtained the correct output for sum-of-elements problems.
+    - Decision: Anirudh tested the code with various programs and fixed several bugs using the data segment format. We verified the correct addressing of arrays and successfully obtained the correct output for sum-of-elements problems.
 
 4.  - Date: 13-02-2025
     - Memebers: Anirudh A, Raghavendra P
-    - Decision: The team collaboratively implemented the Bubble Sort algorithm. We also added a data segment to the code by creating an array to store input data in the format: arr: .word 0x4 ...
+    - Decision: The team collaboratively implemented the Bubble Sort algorithm. We also added a data segment (word) to the code by creating an array to store input data in the format: arr: .word 0x4 ...
 
 5.  - Date: 11-02-2025
     - Memebers: Anirudh A, Raghavendra P
-    - Decision: Realised array indexing is 1, but addi can also perform arithmetic operations and hence differentiating logical and pointer arithmetic will not be possible.
-    Hence made memory of 4*x allocations, index belonging to its module 4 coreid.
+    - Decision: Anirudh realised array indexing is 1, but addi can also perform arithmetic operations and hence differentiating logical and pointer arithmetic will not be possible.
+    Hence Anirudh decided to make memory of 4*x allocations, index belonging to its module 4 coreid.
 
 6.  - Date: 09-02-2025
     - Memebers: Anirudh A, Raghavendra P
@@ -54,15 +54,25 @@ Course project - COA
 - special register: x31
 - instructions implemented: add addi sub la lw sw bne ble beq jal jr slt j li
 - implemented .word in data segment
-
+- code should have a .data and a .text segment to work
+- label should have the corresponding instruction for ease, label should be written as a standalone statement
 - memory starts being used from the end for storing .data segment values
 
 ### To Execute:
 
+- GUI
 ```cmd
 cd Codes
 cd Backend
 pip install -r requirements.txt
 python simulator.py
-Open 127.0.0.1:5000 in browser
+Open 1270.0.1:5000 in browser
+```
+
+- File Reading: change assembly.asm
+```bash
+cd Codes
+cd Backend
+pip install -r requirements.txt
+python file_reading_simulator.py
 ```
