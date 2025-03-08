@@ -1,4 +1,4 @@
-class Core:
+class CoreWithForwarding:
     def __init__(self, coreid, memory):
         self.pc = 0
         self.coreid = coreid
@@ -30,8 +30,22 @@ class Core:
                 self.program_label_map[label] = i
         print("Label Map:", self.program_label_map)
 
-    # --- Helper Methods for Hazard Detection ---
+    # --- Forwarding Helper ---
+    def get_operand_value(self, reg_num):
+        """
+        Return the most up-to-date value for a given register.
+        First check if the MEM stage holds an instruction that writes
+        to that register. (In a real pipeline you might also check EX,
+        but with our stage ordering MEM is sufficient.)
+        """
+        mem_inst = self.pipeline_reg["MEM"]
+        if mem_inst is not None:
+            dest = self.get_destination_register(mem_inst["tokens"])
+            if dest == reg_num and "mem_result" in mem_inst:
+                return mem_inst["mem_result"]
+        return self.registers[reg_num]
 
+    # --- Helper Methods for Hazard Detection ---
     def get_destination_register(self, tokens):
         """Return the destination register for instructions that write to a register."""
         op = tokens[0].lower()
@@ -76,21 +90,27 @@ class Core:
         return sources
 
     def detect_raw_hazard(self, tokens):
-        """Detect a RAW hazard: if any source register in the IF instruction is
-        the destination of an instruction in EX or MEM."""
+        """
+        Detect a RAW hazard. However, if the hazard is caused by an ALU
+        instruction in EX (whose result is available for forwarding), do not stall.
+        A stall is inserted only if a load (lw) in EX is the source of the hazard.
+        """
         sources = self.extract_source_registers(tokens)
         for stage in ["EX", "MEM"]:
             inst = self.pipeline_reg[stage]
             if inst is not None:
                 dest = self.get_destination_register(inst["tokens"])
                 if dest is not None and dest in sources:
-                    return True
+                    if stage == "EX":
+                        op_ex = inst["tokens"][0].lower()
+                        if op_ex == "lw":
+                            return True  # Must stall if load result not yet ready
+                        else:
+                            continue  # Forwarding available for ALU operations
         return False
 
     def detect_war_hazard(self, tokens):
-        """Detect a WAR hazard: if the IF instruction's destination register is
-        needed as a source by an instruction in EX or MEM.
-        Note: In an in-order pipeline, WAR hazards typically do not occur."""
+        """Detect a WAR hazard (typically not a problem in in-order pipelines)."""
         dest = self.get_destination_register(tokens)
         if dest is None:
             return False
@@ -104,8 +124,8 @@ class Core:
 
     def detect_data_hazard(self, tokens):
         """Combine RAW and WAR hazard detection."""
-        # return self.detect_raw_hazard(tokens) or self.detect_war_hazard(tokens)
         return self.detect_raw_hazard(tokens)
+        # (WAR hazards are not expected in our in-order pipeline.)
 
     def flush_pipeline(self):
         """Flush the pipeline registers for control hazards."""
@@ -115,7 +135,6 @@ class Core:
         self.pipeline_reg["MEM"] = None
 
     # --- Pipeline Stages ---
-
     def IF(self):
         # Only fetch a new instruction if the IF register is empty.
         if self.pipeline_reg["IF"] is not None:
@@ -132,22 +151,21 @@ class Core:
             self.pipeline_reg["ID"] = None
         else:
             tokens = self.pipeline_reg["IF"].split()
-            # Remove label if present
+            # Remove label if present.
             if tokens and ":" in tokens[0]:
                 tokens.pop(0)
-            # If the instruction is a branch or jump, bypass hazard detection.
+            # For branch or jump instructions, bypass hazard detection.
             if tokens[0].lower() in ("bne", "beq", "ble", "j", "jal", "jr"):
                 self.pipeline_reg["ID"] = tokens
                 self.pipeline_reg["IF"] = None
             else:
                 # For other instructions, check for data hazards.
                 if self.detect_data_hazard(tokens):
-                    print("Stalling in ID due to data hazard for instruction:", tokens)
+                    print("Stalling in ID due to RAW hazard for instruction:", tokens)
                     # Insert a stall (bubble) by setting a NOP in ID.
-                    # Note: do NOT clear IF so that the same instruction is retried.
+                    # Note: IF is not cleared so the instruction will be retried.
                     self.pipeline_reg["ID"] = ["NOP"]
                 else:
-                    # No hazard: advance the instruction from IF to ID.
                     self.pipeline_reg["ID"] = tokens
                     self.pipeline_reg["IF"] = None
 
@@ -166,19 +184,26 @@ class Core:
         elif op == "add":
             rs1 = int(tokens[2][1:])
             rs2 = int(tokens[3][1:])
-            result = self.registers[rs1] + self.registers[rs2]
+            val1 = self.get_operand_value(rs1)
+            val2 = self.get_operand_value(rs2)
+            result = val1 + val2
         elif op == "addi":
             rs1 = int(tokens[2][1:])
             imm = int(tokens[3])
-            result = self.registers[rs1] + imm
+            val1 = self.get_operand_value(rs1)
+            result = val1 + imm
         elif op == "sub":
             rs1 = int(tokens[2][1:])
             rs2 = int(tokens[3][1:])
-            result = self.registers[rs1] - self.registers[rs2]
+            val1 = self.get_operand_value(rs1)
+            val2 = self.get_operand_value(rs2)
+            result = val1 - val2
         elif op == "slt":
             rs1 = int(tokens[2][1:])
             rs2 = int(tokens[3][1:])
-            result = 1 if self.registers[rs1] < self.registers[rs2] else 0
+            val1 = self.get_operand_value(rs1)
+            val2 = self.get_operand_value(rs2)
+            result = 1 if val1 < val2 else 0
         elif op == "li":
             imm = int(tokens[2])
             result = imm
@@ -186,22 +211,42 @@ class Core:
             # lw rd, offset(rs)
             offset, reg = tokens[2].split('(')
             rs = int(reg[:-1][1:])
-            mem_addr = self.registers[rs] + int(offset)
+            base_val = self.get_operand_value(rs)
+            mem_addr = base_val + int(offset)
         elif op == "sw":
             # sw rs, offset(rd)
             offset, reg = tokens[2].split('(')
             rs = int(tokens[1][1:])
             rd = int(reg[:-1][1:])
-            mem_addr = self.registers[rd] + int(offset)
+            base_val = self.get_operand_value(rd)
+            mem_addr = base_val + int(offset)
         elif op in ("bne", "beq", "ble"):
-            # For branch instructions, simply pass along register numbers and the label.
-            result = (int(tokens[1][1:]), int(tokens[2][1:]), tokens[3])
+            # For branch instructions, forward the operand values and resolve the branch here.
+            rs1 = int(tokens[1][1:])
+            rs2 = int(tokens[2][1:])
+            val1 = self.get_operand_value(rs1)
+            val2 = self.get_operand_value(rs2)
+            branch_taken = False
+            if op == "bne" and val1 != val2:
+                branch_taken = True
+            elif op == "beq" and val1 == val2:
+                branch_taken = True
+            elif op == "ble" and val1 <= val2:
+                branch_taken = True
+
+            if branch_taken:
+                print("Branch taken in EX for instruction:", tokens)
+                self.pc = self.program_label_map[tokens[3]]
+                self.flush_pipeline()
+                result = None
+            else:
+                print("Branch not taken in EX for instruction:", tokens)
+                result = None
         elif op == "jal":
-            # Compute return address (pc+1) for jal.
-            result = self.pc + 1
+            result = self.pc + 1  # Compute return address.
         elif op == "jr":
             rs = int(tokens[1][1:])
-            result = self.registers[rs]
+            result = self.get_operand_value(rs)
         elif op == "j":
             result = None
         else:
@@ -232,6 +277,7 @@ class Core:
         elif op == "sw":
             rs = int(tokens[1][1:])
             self.memory.memory[mem_addr + self.coreid] = self.registers[rs]
+        # For branch instructions, nothing further needs to be done in MEM.
         self.pipeline_reg["MEM"] = {"tokens": tokens, "mem_result": mem_result}
     
     def WB(self):
@@ -249,22 +295,11 @@ class Core:
             rd = int(tokens[1][1:])
             self.registers[rd] = mem_result
 
-        # For branch instructions, decide in WB whether to change PC.
+        # For branch instructions, they have been resolved in EX stage.
         elif op in ("bne", "beq", "ble"):
-            rs1 = int(tokens[1][1:])
-            rs2 = int(tokens[2][1:])
-            label = tokens[3]
-            if (op == "bne" and self.registers[rs1] != self.registers[rs2]) or \
-            (op == "beq" and self.registers[rs1] == self.registers[rs2]) or \
-            (op == "ble" and self.registers[rs1] <= self.registers[rs2]):
-                print("Branch taken in WB for instruction:", tokens)
-                self.pc = self.program_label_map[label]
-                self.flush_pipeline()
-            else:
-                print("Branch not taken in WB for instruction:", tokens)
-                # Do nothing; PC is already correct.
+            pass
         
-        # For jump-and-link, jump-register, and unconditional jump instructions:
+        # For jump-and-link, jump-register, and unconditional jump instructions.
         elif op == "jal":
             rd = int(tokens[1][1:])
             self.registers[rd] = mem_result  # Return address computed in EX.
@@ -283,11 +318,9 @@ class Core:
             self.pc = self.program_label_map[label]
             self.flush_pipeline()
         else:
-            # For any unhandled instructions, do nothing.
             pass
 
         self.pipeline_reg["WB"] = {"tokens": tokens, "final_result": mem_result}
-
 
     def pipeline_empty(self):
         """Return True if all pipeline registers are empty (i.e., None)."""

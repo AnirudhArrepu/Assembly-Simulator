@@ -1,10 +1,15 @@
 from Memory import Memory
 from Core import Core
+from CoreWithForwarding import CoreWithForwarding
 
 class Simulator:
-    def __init__(self):
+    def __init__(self, forwarding=False):
         self.memory = Memory()
-        self.cores = [Core(i, self.memory) for i in range(4)]
+        self.forwarding = forwarding
+        if not self.forwarding:
+            self.cores = [Core(i, self.memory) for i in range(4)]
+        else:
+            self.cores = [CoreWithForwarding(i, self.memory) for i in range(4)]
         self.program = []
         self.clock = 0
         self.data_segment = {}
@@ -38,5 +43,6 @@ class Simulator:
             for core in self.cores:
                 core.pipeline_cycle()
             self.clock += 1
+        self.clock -= 1
 
         print("clock cycles:", self.clock)

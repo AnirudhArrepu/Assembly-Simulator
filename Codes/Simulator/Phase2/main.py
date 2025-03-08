@@ -9,7 +9,7 @@ from Memory import Memory
 from Core import Core
 from Simulator import Simulator
 
-
+#bubble sort
 program = '''
 .data
 arr: .word 0x144 0x3 0x9 0x8 0x1 0x100
@@ -41,17 +41,28 @@ outer_exit: j exit
 exit: addi x0 x0 0
 '''
 
-program='''
-.data
 
-.text
-addi x10 x10 2
-loop: bne x8 x10 exit
-addi x8 x8 1
-j loop
-exit: addi x0 x0 0
-'''
+# # control hazards
+# program='''
+# .data
 
+# .text
+# addi x1 x0 2
+# addi x10 x0 4
+# loop: beq x10 x1 exit
+# addi x10 x10 -1
+# j loop
+# exit: addi x0 x0 0
+# '''
+
+# # data hazards
+# program=''''
+# .data
+
+# .text
+# addi x2 x0 5
+# addi x3 x2 1
+# '''
 
 def preprocess(program):
     #getting data segment
@@ -70,9 +81,9 @@ def preprocess(program):
 
     return programs_text, programs_data
 
-def main(program):
+def main(program, forwarding=False):
     programs_text, programs_data = preprocess(program)
-    sim = Simulator()
+    sim = Simulator(forwarding=forwarding)
     sim.program = programs_text
     sim.make_data_segment(programs_data)
     sim.make_labels()
@@ -85,7 +96,7 @@ def main(program):
 
     print(f"number of clock cycles: {sim.clock}")
 
-    # print(sim.memory.printMemory())
+    print(sim.memory.printMemory())
 
     return sim
 
