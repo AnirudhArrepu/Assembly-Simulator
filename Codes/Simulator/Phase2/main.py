@@ -60,15 +60,9 @@ program=''''
 .data
 
 .text
- ADDI X5 X0 3  
-    ADDI X7 X5 6    
-    ADDI X6 X0 2       
-    ADD X4 X5 X6
-    ADDI X8 X4 1
-    ADDI X10 X0 11
-    ADD X9 X0 X0
-    ADDI X13 X0 0
-    ADDI X14 X13 5
+addi x2 x0 5
+addi x3 x2 3
+add x4 x3 x2
 '''
 
 

@@ -9,6 +9,12 @@ class CoreWithForwarding:
         self.data_segment = {}
         self.memory_data_index = 1020
 
+        self.latencies = {
+            "add": 0,
+            "addi": 1,
+            "sub": 0,
+        }
+
         # x31 is the special register
         self.registers[31] = coreid
 
