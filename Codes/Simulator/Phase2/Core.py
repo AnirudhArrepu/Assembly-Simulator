@@ -21,6 +21,8 @@ class Core:
             "WB": None,
         }
 
+        self.stall_count = 0  # Stall count initialization
+
     def make_labels(self, insts):
         self.program = insts
         for i, inst in enumerate(insts):
@@ -146,6 +148,7 @@ class Core:
                     # Insert a stall (bubble) by setting a NOP in ID.
                     # Note: do NOT clear IF so that the same instruction is retried.
                     self.pipeline_reg["ID"] = ["NOP"]
+                    self.stall_count += 1  # Increment stall count
                 else:
                     # No hazard: advance the instruction from IF to ID.
                     self.pipeline_reg["ID"] = tokens

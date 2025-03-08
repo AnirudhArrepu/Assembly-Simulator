@@ -21,6 +21,8 @@ class CoreWithForwarding:
             "WB": None,
         }
 
+        self.stall_count = 0  # Initialize stall count
+
     def make_labels(self, insts):
         self.program = insts
         for i, inst in enumerate(insts):
@@ -165,6 +167,7 @@ class CoreWithForwarding:
                     # Insert a stall (bubble) by setting a NOP in ID.
                     # Note: IF is not cleared so the instruction will be retried.
                     self.pipeline_reg["ID"] = ["NOP"]
+                    self.stall_count += 1  # Increment stall count
                 else:
                     self.pipeline_reg["ID"] = tokens
                     self.pipeline_reg["IF"] = None

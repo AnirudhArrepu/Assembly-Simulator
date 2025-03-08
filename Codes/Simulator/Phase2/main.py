@@ -42,27 +42,36 @@ exit: addi x0 x0 0
 '''
 
 
-# # control hazards
-# program='''
-# .data
+# control hazards
+program='''
+.data
 
-# .text
-# addi x1 x0 2
-# addi x10 x0 4
-# loop: beq x10 x1 exit
-# addi x10 x10 -1
-# j loop
-# exit: addi x0 x0 0
-# '''
+.text
+addi x1 x0 2
+addi x10 x0 4
+loop: beq x10 x1 exit
+addi x10 x10 -1
+j loop
+exit: addi x0 x0 0
+'''
 
-# # data hazards
-# program=''''
-# .data
+# data hazards
+program=''''
+.data
 
-# .text
-# addi x2 x0 5
-# addi x3 x2 1
-# '''
+.text
+ ADDI X5 X0 3  
+    ADDI X7 X5 6    
+    ADDI X6 X0 2       
+    ADD X4 X5 X6
+    ADDI X8 X4 1
+    ADDI X10 X0 11
+    ADD X9 X0 X0
+    ADDI X13 X0 0
+    ADDI X14 X13 5
+'''
+
+
 
 def preprocess(program):
     #getting data segment
@@ -96,9 +105,17 @@ def main(program, forwarding=False):
 
     print(f"number of clock cycles: {sim.clock}")
 
-    print(sim.memory.printMemory())
+    memories = sim.memory.printMemory()
+    print("Core 0: ", memories[0])
+    print("Core 1: ", memories[1])
+    print("Core 2: ", memories[2])
+    print("Core 3: ", memories[3])
+
+    # Print the stall count for each core
+    for i, core in enumerate(sim.cores):
+        print(f"Stall count for Core {i}: {core.stall_count}")
 
     return sim
 
 if __name__ == "__main__":
-    main(program)
+    main(program, forwarding=True)

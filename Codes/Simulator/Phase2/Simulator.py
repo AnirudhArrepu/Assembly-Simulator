@@ -37,7 +37,7 @@ class Simulator:
                 "MEM": None,
                 "WB": None,
             }
-
+    
         while not all(core.pc >= len(self.program) and core.pipeline_empty() for core in self.cores):
             # print(self.program[self.cores[0].pc])
             for core in self.cores:
