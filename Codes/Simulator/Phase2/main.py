@@ -60,10 +60,16 @@ program=''''
 .data
 
 .text
-addi x2 x0 5
-addi x3 x2 3
-add x4 x3 x2
+addi x3 x0 3
+addi x4 x0 4
+add x2 x3 x4
+beq x2 x3 label
+addi x5 x4 4
+label: addi x0 x0 3
 '''
+
+forward = False
+# forward = True
 
 
 
@@ -99,11 +105,11 @@ def main(program, forwarding=False):
 
     print(f"number of clock cycles: {sim.clock}")
 
-    memories = sim.memory.printMemory()
-    print("Core 0: ", memories[0])
-    print("Core 1: ", memories[1])
-    print("Core 2: ", memories[2])
-    print("Core 3: ", memories[3])
+    # memories = sim.memory.printMemory()
+    # print("Core 0: ", memories[0])
+    # print("Core 1: ", memories[1])
+    # print("Core 2: ", memories[2])
+    # print("Core 3: ", memories[3])
 
     # Print the stall count for each core
     for i, core in enumerate(sim.cores):
@@ -112,4 +118,4 @@ def main(program, forwarding=False):
     return sim
 
 if __name__ == "__main__":
-    main(program, forwarding=True)
+    main(program, forwarding=forward)

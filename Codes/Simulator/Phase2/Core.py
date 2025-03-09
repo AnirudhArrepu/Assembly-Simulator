@@ -1,3 +1,20 @@
+class If_program:
+    program = []
+
+    @staticmethod
+    def IF(pipeline_reg_if, pc):
+        # Only fetch a new instruction if the IF register is empty.
+        if pipeline_reg_if is not None:
+            return  pc, pipeline_reg_if # Preserve stalled instruction in IF.
+        if pc < len(If_program.program):
+            pipeline_reg_if = If_program.program[pc]
+            print("IF:", If_program.program[pc])
+            pc += 1
+        else:
+            pipeline_reg_if = None
+
+        return pc, pipeline_reg_if
+
 class Core:
     def __init__(self, coreid, memory):
         self.pc = 0
@@ -11,7 +28,7 @@ class Core:
 
         self.latencies = {
             "add": 0,
-            "addi": 1,
+            "addi": 0,
             "sub": 0,
         }
 
@@ -30,7 +47,7 @@ class Core:
         self.stall_count = 0  # Stall count initialization
 
     def make_labels(self, insts):
-        self.program = insts
+        If_program.program = insts
         for i, inst in enumerate(insts):
             tokens = inst.split()
             if tokens and ":" in tokens[0]:
@@ -121,17 +138,6 @@ class Core:
         self.pipeline_reg["MEM"] = None
 
     # --- Pipeline Stages ---
-    def IF(self):
-        # Only fetch a new instruction if the IF register is empty.
-        if self.pipeline_reg["IF"] is not None:
-            return  # Preserve stalled instruction in IF.
-        if self.pc < len(self.program):
-            self.pipeline_reg["IF"] = self.program[self.pc]
-            print("IF:", self.program[self.pc])
-            self.pc += 1
-        else:
-            self.pipeline_reg["IF"] = None
-
     def ID(self):
         if self.pipeline_reg["IF"] is None:
             self.pipeline_reg["ID"] = None
@@ -346,4 +352,6 @@ class Core:
         self.MEM()
         self.EX()
         self.ID()
-        self.IF()
+        pc, pip_if = If_program.IF(self.pipeline_reg["IF"], self.pc)
+        self.pc = pc
+        self.pipeline_reg["IF"] = pip_if

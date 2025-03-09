@@ -1,4 +1,4 @@
-class Core:
+class CoreWithForwarding:
     def __init__(self, coreid, memory):
         self.pc = 0
         self.coreid = coreid
@@ -18,7 +18,7 @@ class Core:
         # x31 is the special register
         self.registers[31] = coreid
 
-        # Pipeline registers – note that we no longer use a global "latency" field.
+        # Pipeline registers
         self.pipeline_reg = {
             "IF": None,
             "ID": None,
@@ -27,7 +27,7 @@ class Core:
             "WB": None,
         }
 
-        self.stall_count = 0  # Stall count initialization
+        self.stall_count = 0  # Initialize stall count
 
     def make_labels(self, insts):
         self.program = insts
@@ -37,6 +37,21 @@ class Core:
                 label = tokens[0].split(":")[0]
                 self.program_label_map[label] = i
         print("Label Map:", self.program_label_map)
+
+    # --- Forwarding Helper ---
+    def get_operand_value(self, reg_num):
+        """
+        Return the most up-to-date value for a given register.
+        First check if the MEM stage holds an instruction that writes
+        to that register. (In a real pipeline you might also check EX,
+        but with our stage ordering MEM is sufficient.)
+        """
+        mem_inst = self.pipeline_reg["MEM"]
+        if mem_inst is not None:
+            dest = self.get_destination_register(mem_inst["tokens"])
+            if dest == reg_num and "mem_result" in mem_inst:
+                return mem_inst["mem_result"]
+        return self.registers[reg_num]
 
     # --- Helper Methods for Hazard Detection ---
     def get_destination_register(self, tokens):
@@ -83,21 +98,27 @@ class Core:
         return sources
 
     def detect_raw_hazard(self, tokens):
-        """Detect a RAW hazard: if any source register in the IF instruction is
-        the destination of an instruction in EX or MEM."""
+        """
+        Detect a RAW hazard. However, if the hazard is caused by an ALU
+        instruction in EX (whose result is available for forwarding), do not stall.
+        A stall is inserted only if a load (lw) in EX is the source of the hazard.
+        """
         sources = self.extract_source_registers(tokens)
         for stage in ["EX", "MEM"]:
             inst = self.pipeline_reg[stage]
             if inst is not None:
                 dest = self.get_destination_register(inst["tokens"])
                 if dest is not None and dest in sources:
-                    return True
+                    if stage == "EX":
+                        op_ex = inst["tokens"][0].lower()
+                        if op_ex == "lw":
+                            return True  # Must stall if load result not yet ready
+                        else:
+                            continue  # Forwarding available for ALU operations
         return False
 
     def detect_war_hazard(self, tokens):
-        """Detect a WAR hazard: if the IF instruction's destination register is
-        needed as a source by an instruction in EX or MEM.
-        Note: In an in-order pipeline, WAR hazards typically do not occur."""
+        """Detect a WAR hazard (typically not a problem in in-order pipelines)."""
         dest = self.get_destination_register(tokens)
         if dest is None:
             return False
@@ -112,6 +133,7 @@ class Core:
     def detect_data_hazard(self, tokens):
         """Combine RAW and WAR hazard detection."""
         return self.detect_raw_hazard(tokens)
+        # (WAR hazards are not expected in our in-order pipeline.)
 
     def flush_pipeline(self):
         """Flush the pipeline registers for control hazards."""
@@ -137,124 +159,115 @@ class Core:
             self.pipeline_reg["ID"] = None
         else:
             tokens = self.pipeline_reg["IF"].split()
-            # Remove label if present
+            # Remove label if present.
             if tokens and ":" in tokens[0]:
                 tokens.pop(0)
-            # For branch/jump instructions, bypass hazard detection.
+            # For branch or jump instructions, bypass hazard detection.
             if tokens[0].lower() in ("bne", "beq", "ble", "j", "jal", "jr"):
                 self.pipeline_reg["ID"] = tokens
                 self.pipeline_reg["IF"] = None
             else:
-                # Check for data hazards.
+                # For other instructions, check for data hazards.
                 if self.detect_data_hazard(tokens):
-                    print("Stalling in ID due to data hazard for instruction:", tokens)
+                    print("Stalling in ID due to RAW hazard for instruction:", tokens)
                     # Insert a stall (bubble) by setting a NOP in ID.
-                    # (Do not clear IF so that the same instruction is retried.)
+                    # Note: IF is not cleared so the instruction will be retried.
                     self.pipeline_reg["ID"] = ["NOP"]
-                    self.stall_count += 1
+                    self.stall_count += 1  # Increment stall count
                 else:
-                    # Advance instruction from IF to ID.
                     self.pipeline_reg["ID"] = tokens
                     self.pipeline_reg["IF"] = None
 
     def EX(self):
-        # If there's already an instruction in EX, check its remaining latency.
-        if self.pipeline_reg["EX"] is not None:
-            if self.pipeline_reg["EX"]["remaining_latency"] > 1:
-                self.pipeline_reg["EX"]["remaining_latency"] -= 1
-                self.stall_count += 1
-                print("Stalling in EX, remaining latency:",
-                      self.pipeline_reg["EX"]["remaining_latency"])
-                return  # Keep the instruction in EX until latency is exhausted.
-            # When remaining_latency == 1, finish execution this cycle:
-            self.pipeline_reg["EX"]["remaining_latency"] = 0
-            # (Instruction stays in EX and will be passed to MEM in MEM stage.)
-            return
-
-        # If EX is empty, load the instruction from ID.
-        if self.pipeline_reg["ID"] is None or self.pipeline_reg["ID"][0].lower() == "nop":
+        tokens = self.pipeline_reg["ID"]
+        if tokens is None or tokens[0].lower() == "nop":
             self.pipeline_reg["EX"] = None
             return
 
-        tokens = self.pipeline_reg["ID"]
         op = tokens[0].lower()
         result = None
         mem_addr = None
 
-        # Determine operation and compute result.
         if op == "la":  # la rd, data_label
             result = tokens[2]
-            latency = 0
         elif op == "add":
             rs1 = int(tokens[2][1:])
             rs2 = int(tokens[3][1:])
-            result = self.registers[rs1] + self.registers[rs2]
-            latency = self.latencies["add"]
+            val1 = self.get_operand_value(rs1)
+            val2 = self.get_operand_value(rs2)
+            result = val1 + val2
         elif op == "addi":
             rs1 = int(tokens[2][1:])
             imm = int(tokens[3])
-            result = self.registers[rs1] + imm
-            latency = self.latencies["addi"]
+            val1 = self.get_operand_value(rs1)
+            result = val1 + imm
         elif op == "sub":
             rs1 = int(tokens[2][1:])
             rs2 = int(tokens[3][1:])
-            result = self.registers[rs1] - self.registers[rs2]
-            latency = self.latencies["sub"]
+            val1 = self.get_operand_value(rs1)
+            val2 = self.get_operand_value(rs2)
+            result = val1 - val2
         elif op == "slt":
             rs1 = int(tokens[2][1:])
             rs2 = int(tokens[3][1:])
-            result = 1 if self.registers[rs1] < self.registers[rs2] else 0
-            latency = 0
+            val1 = self.get_operand_value(rs1)
+            val2 = self.get_operand_value(rs2)
+            result = 1 if val1 < val2 else 0
         elif op == "li":
             imm = int(tokens[2])
             result = imm
-            latency = 0
         elif op == "lw":
             # lw rd, offset(rs)
             offset, reg = tokens[2].split('(')
             rs = int(reg[:-1][1:])
-            mem_addr = self.registers[rs] + int(offset)
-            latency = 0
+            base_val = self.get_operand_value(rs)
+            mem_addr = base_val + int(offset)
         elif op == "sw":
             # sw rs, offset(rd)
             offset, reg = tokens[2].split('(')
             rs = int(tokens[1][1:])
             rd = int(reg[:-1][1:])
-            mem_addr = self.registers[rd] + int(offset)
-            latency = 1
+            base_val = self.get_operand_value(rd)
+            mem_addr = base_val + int(offset)
         elif op in ("bne", "beq", "ble"):
-            result = (int(tokens[1][1:]), int(tokens[2][1:]), tokens[3])
-            latency = 0
+            # For branch instructions, forward the operand values and resolve the branch here.
+            rs1 = int(tokens[1][1:])
+            rs2 = int(tokens[2][1:])
+            val1 = self.get_operand_value(rs1)
+            val2 = self.get_operand_value(rs2)
+            branch_taken = False
+            if op == "bne" and val1 != val2:
+                branch_taken = True
+            elif op == "beq" and val1 == val2:
+                branch_taken = True
+            elif op == "ble" and val1 <= val2:
+                branch_taken = True
+
+            if branch_taken:
+                print("Branch taken in EX for instruction:", tokens)
+                self.pc = self.program_label_map[tokens[3]]
+                self.flush_pipeline()
+                result = None
+            else:
+                print("Branch not taken in EX for instruction:", tokens)
+                result = None
         elif op == "jal":
-            result = self.pc + 1
-            latency = 0
+            result = self.pc + 1  # Compute return address.
         elif op == "jr":
             rs = int(tokens[1][1:])
-            result = self.registers[rs]
-            latency = 0
+            result = self.get_operand_value(rs)
         elif op == "j":
-            latency = 0
+            result = None
         else:
-            print("undefined operation in EX stage:", tokens[0])
-            latency = 0
-
-        # Place the instruction in EX along with its computed result and latency counter.
-        self.pipeline_reg["EX"] = {
-            "tokens": tokens,
-            "result": result,
-            "mem_addr": mem_addr,
-            "remaining_latency": latency
-        }
-        # Clear ID as the instruction moves to EX.
-        self.pipeline_reg["ID"] = None
+            print("Undefined operation in EX stage:", tokens[0])
+        self.pipeline_reg["EX"] = {"tokens": tokens, "result": result, "mem_addr": mem_addr}
 
     def MEM(self):
-        # Only move the instruction from EX to MEM if its latency is finished.
-        if self.pipeline_reg["EX"] is None or self.pipeline_reg["EX"]["remaining_latency"] > 0:
+        ex_data = self.pipeline_reg["EX"]
+        if ex_data is None:
             self.pipeline_reg["MEM"] = None
             return
 
-        ex_data = self.pipeline_reg["EX"]
         tokens = ex_data["tokens"]
         op = tokens[0].lower()
         result = ex_data["result"]
@@ -273,11 +286,9 @@ class Core:
         elif op == "sw":
             rs = int(tokens[1][1:])
             self.memory.memory[mem_addr + self.coreid] = self.registers[rs]
-
+        # For branch instructions, nothing further needs to be done in MEM.
         self.pipeline_reg["MEM"] = {"tokens": tokens, "mem_result": mem_result}
-        # Clear EX since it has now moved to MEM.
-        self.pipeline_reg["EX"] = None
-
+    
     def WB(self):
         mem_data = self.pipeline_reg["MEM"]
         if mem_data is None:
@@ -288,26 +299,16 @@ class Core:
         op = tokens[0].lower()
         mem_result = mem_data["mem_result"]
 
-        # For non-control instructions, write the result to the destination register.
+        # For non-control instructions, write the result.
         if op in ("la", "add", "addi", "sub", "slt", "li", "lw"):
             rd = int(tokens[1][1:])
             self.registers[rd] = mem_result
 
-        # For branch instructions, decide in WB whether to change the PC.
+        # For branch instructions, they have been resolved in EX stage.
         elif op in ("bne", "beq", "ble"):
-            rs1 = int(tokens[1][1:])
-            rs2 = int(tokens[2][1:])
-            label = tokens[3]
-            if (op == "bne" and self.registers[rs1] != self.registers[rs2]) or \
-               (op == "beq" and self.registers[rs1] == self.registers[rs2]) or \
-               (op == "ble" and self.registers[rs1] <= self.registers[rs2]):
-                print("Branch taken in WB for instruction:", tokens)
-                self.pc = self.program_label_map[label]
-                self.flush_pipeline()
-            else:
-                print("Branch not taken in WB for instruction:", tokens)
+            pass
         
-        # For jump-and-link, jump-register, and unconditional jump instructions:
+        # For jump-and-link, jump-register, and unconditional jump instructions.
         elif op == "jal":
             rd = int(tokens[1][1:])
             self.registers[rd] = mem_result  # Return address computed in EX.
@@ -325,6 +326,8 @@ class Core:
             print("Jump taken in WB for instruction:", tokens)
             self.pc = self.program_label_map[label]
             self.flush_pipeline()
+        else:
+            pass
 
         self.pipeline_reg["WB"] = {"tokens": tokens, "final_result": mem_result}
 
