@@ -79,7 +79,7 @@ j loop
 exit: addi x0 x0 0
 '''
 
-forward = False
+forward = True
 # forward = True
 
 
