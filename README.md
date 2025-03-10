@@ -1,6 +1,6 @@
 # Assembly-Simulator
 
-Course project - COA
+Course project - COA - RISCV Simulator
 
 ## Developers
 
