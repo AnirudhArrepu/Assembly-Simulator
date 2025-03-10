@@ -12,17 +12,19 @@ class CoreWithForwarding:
         self.data_segment = {}
         self.memory_data_index = 1020
 
-        # Even though latencies remain defined, they will not be used.
+        # Latency values for operations.
+        # (If a latency is set to 0, we treat it as 1 cycle.)
         self.latencies = {
-            "add": 0,
-            "addi": 0,
-            "sub": 0,
+            "add": 1,
+            "addi": 1,
+            "sub": 1,
+            # Other instructions not in the dictionary default to 1 cycle.
         }
 
-        # x31 is the special register
+        # x31 is the special register.
         self.registers[31] = coreid
 
-        # Pipeline registers – no latency fields are needed.
+        # Pipeline registers.
         self.pipeline_reg = {
             "IF": None,
             "ID": None,
@@ -121,6 +123,16 @@ class CoreWithForwarding:
 
     # --- Pipeline Stages ---
     def ID(self):
+        # Structural hazard check: if EX is busy with a multi-cycle instruction, stall ID.
+        if self.pipeline_reg["EX"] is not None:
+            ex_inst = self.pipeline_reg["EX"]
+            if "cycles_remaining" in ex_inst and ex_inst["cycles_remaining"] > 1:
+                print("Stalling in ID due to busy EX stage for instruction in IF:",
+                      self.pipeline_reg["IF"])
+                self.stall_count += 1
+                # Do not clear IF; keep the instruction waiting.
+                return
+
         if self.pipeline_reg["IF"] is None:
             self.pipeline_reg["ID"] = None
         else:
@@ -143,11 +155,19 @@ class CoreWithForwarding:
                     self.pipeline_reg["IF"] = None
 
     def EX(self):
-        # If an instruction is already in EX, do nothing.
+        # If an instruction is already in EX, check if it is still executing.
         if self.pipeline_reg["EX"] is not None:
+            ex_inst = self.pipeline_reg["EX"]
+            if "cycles_remaining" in ex_inst and ex_inst["cycles_remaining"] > 1:
+                ex_inst["cycles_remaining"] -= 1
+                self.stall_count += 1  # Count this cycle as a stall due to multi-cycle execution.
+                print("EX stage stalling, cycles remaining:",
+                      ex_inst["cycles_remaining"], "for instruction:", ex_inst["tokens"])
+                return
+            # When cycles_remaining equals 1, the instruction is now ready to move to MEM.
             return
 
-        # Load instruction from ID if available.
+        # If EX is empty, load the instruction from ID.
         if self.pipeline_reg["ID"] is None or self.pipeline_reg["ID"][0].lower() == "nop":
             self.pipeline_reg["EX"] = None
             return
@@ -183,7 +203,6 @@ class CoreWithForwarding:
             # lw rd, offset(rs)
             offset, reg = tokens[2].split('(')
             rs = int(reg[:-1][1:])
-            # Forward value is used for base register.
             base_val = self.forward_value(rs)
             mem_addr = base_val + int(offset)
         elif op == "sw":
@@ -209,8 +228,7 @@ class CoreWithForwarding:
                 print("Branch taken in EX for instruction:", tokens)
                 self.pc = self.program_label_map[tokens[3]]
                 self.flush_pipeline()
-                self.pipeline_reg["EX"] = None
-                self.pipeline_reg["ID"] = None
+                # Do not set EX; the branch flushes the pipeline.
                 return
             else:
                 print("Branch not taken in EX for instruction:", tokens)
@@ -220,27 +238,41 @@ class CoreWithForwarding:
             rs = int(tokens[1][1:])
             result = self.forward_value(rs)
         elif op == "j":
-            # For an unconditional jump no result is computed.
+            # Unconditional jump does not compute a result.
             pass
         else:
             print("undefined operation in EX stage:", tokens[0])
 
-        # Place the computed values in EX.
+        # Determine the number of cycles this instruction should spend in EX.
+        # If the latency value is 0, we treat it as 1 cycle.
+        latency = self.latencies.get(op, 1)
+        if latency < 1:
+            latency = 1
+
+        # Place the instruction in EX with its computed result, memory address,
+        # and the appropriate multi-cycle latency counter.
         self.pipeline_reg["EX"] = {
             "tokens": tokens,
             "result": result,
-            "mem_addr": mem_addr
+            "mem_addr": mem_addr,
+            "cycles_remaining": latency
         }
         # Clear ID as the instruction moves to EX.
         self.pipeline_reg["ID"] = None
 
     def MEM(self):
-        # If there is no instruction in EX, clear MEM.
+        # Only move the instruction from EX to MEM if there is one.
         if self.pipeline_reg["EX"] is None:
             self.pipeline_reg["MEM"] = None
             return
 
         ex_data = self.pipeline_reg["EX"]
+        # If the instruction is still in multi-cycle EX, then wait.
+        if "cycles_remaining" in ex_data and ex_data["cycles_remaining"] > 1:
+            print("MEM stage waiting on EX stage stall for instruction:", ex_data["tokens"])
+            self.pipeline_reg["MEM"] = None
+            return
+
         tokens = ex_data["tokens"]
         op = tokens[0].lower()
         result = ex_data["result"]
@@ -251,7 +283,8 @@ class CoreWithForwarding:
             data_label = tokens[2]
             for val in self.data_segment[data_label]:
                 self.memory.memory[self.memory_data_index] = val
-                print("Core", self.coreid, "writing", val, "at memory index", self.memory_data_index)
+                print("Core", self.coreid, "writing", val,
+                      "at memory index", self.memory_data_index)
                 self.memory_data_index -= 4
             mem_result = self.memory_data_index + 4
         elif op == "lw":
