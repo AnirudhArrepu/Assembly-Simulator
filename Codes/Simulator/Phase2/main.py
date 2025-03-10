@@ -219,47 +219,52 @@ def main(program, forwarding=False):
 
     return sim
 
-## Local ###
-main(program=program2, forwarding=True)
+# ## Local ###
+# main(program=program2, forwarding=True)
 
 
-# ### Server ###
-# app = Flask(__name__)
-# CORS(app)
+### Server ###
+app = Flask(__name__)
+CORS(app)
 
-# @app.route('/')
-# def index():
-#     return render_template('gui.html')
+@app.route('/')
+def index():
+    return render_template('gui.html')
 
-# @app.route('/simulate', methods=['POST'])
-# def simulate():
-#     data = request.json
-#     program = data['program']
-#     forwarding = data['forwarding']
-#     latencies = data["latencies"]
+@app.route('/simulate', methods=['POST'])
+def simulate():
+    data = request.json
+    program = data['program']
+    forwarding = data['forwarding']
+    latencies = data["latencies"]
     
-#     Core.latencies["add"] = latencies["add"]
-#     Core.latencies["addi"] = latencies["addi"]
-#     Core.latencies["sub"] = latencies["sub"]
+    Core.latencies["add"] = latencies["add"]
+    Core.latencies["addi"] = latencies["addi"]
+    Core.latencies["sub"] = latencies["sub"]
     
-#     CoreWithForwarding.latencies["add"] = latencies["add"]
-#     CoreWithForwarding.latencies["addi"] = latencies["addi"]
-#     CoreWithForwarding.latencies["sub"] = latencies["sub"]
+    CoreWithForwarding.latencies["add"] = latencies["add"]
+    CoreWithForwarding.latencies["addi"] = latencies["addi"]
+    CoreWithForwarding.latencies["sub"] = latencies["sub"]
     
-#     print(program)
-#     print(forwarding)
-#     sim = main(program, forwarding=forwarding)
+    print(program)
+    print(forwarding)
+    sim = main(program, forwarding=forwarding)
 
-#     shared_memory = sim.memory.printMemory()
+    shared_memory = sim.memory.printMemory()
 
-#     return jsonify({
-#         'core0': sim.cores[0].registers,
-#         'core1': sim.cores[1].registers,
-#         'core2': sim.cores[2].registers,
-#         'core3': sim.cores[3].registers,
-#         'clock': sim.clock,
-#         'memory': shared_memory,
-#     })
+    return jsonify({
+        'core0': sim.cores[0].get_ipc(),
+        'core1': sim.cores[1].get_ipc(),
+        'core2': sim.cores[2].get_ipc(),
+        'core3': sim.cores[3].get_ipc(),
 
-# if __name__ == "__main__":
-#     app.run(debug=True)
+        'core0_stalls': sim.cores[0].stall_count,
+        'core1_stalls': sim.cores[1].stall_count,
+        'core2_stalls': sim.cores[2].stall_count,
+        'core3_stalls': sim.cores[3].stall_count,
+        'clock': sim.clock,
+        'memory': shared_memory,
+    })
+
+if __name__ == "__main__":
+    app.run(debug=True)
