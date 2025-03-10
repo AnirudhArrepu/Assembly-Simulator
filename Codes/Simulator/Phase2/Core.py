@@ -32,7 +32,7 @@ class Core:
         self.registers = [0] * 32
 
         self.data_segment = {}
-        self.memory_data_index = 1020
+        self.memory_data_index = 4092
 
         # x31 is the special register.
         self.registers[31] = coreid
