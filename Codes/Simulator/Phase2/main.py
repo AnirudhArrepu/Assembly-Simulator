@@ -222,6 +222,8 @@ def main(program, forwarding=False):
 # ## Local ###
 # main(program=program2, forwarding=True)
 
+with open('./assembly.asm', 'r') as file:
+    program_file = file.read()
 
 ### Server ###
 app = Flask(__name__)
@@ -235,6 +237,8 @@ def index():
 def simulate():
     data = request.json
     program = data['program']
+    if program is None:
+        program = program_file
     forwarding = data['forwarding']
     latencies = data["latencies"]
     
