@@ -191,12 +191,13 @@ def main(program, forwarding=False):
     for i, core in enumerate(sim.cores):
         print(f"Stall count for Core {i}: {core.stall_count}")
 
-    print("IPC", len(If_program.program)/(sim.clock-4))
+    for i, core in enumerate(sim.cores):
+        print(f"IPC for Core {i}: {core.get_ipc()}")
 
     return sim
 
 ## Local ###
-main(program=program, forwarding=False)
+main(program=program2, forwarding=True)
 
 
 # ### Server ###

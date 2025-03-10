@@ -47,6 +47,15 @@ class Core:
         }
 
         self.stall_count = 0  # Total stall cycles.
+        self.pipeline_flush_count = 0
+        self.inst_executed = 0
+
+    def get_ipc(self):
+        i = self.inst_executed
+        s = self.stall_count
+        pf = self.pipeline_flush_count
+
+        return i/(i+s+pf)
 
     def make_labels(self, insts):
         If_program.program = insts
@@ -132,6 +141,7 @@ class Core:
 
     def flush_pipeline(self):
         """Flush the pipeline registers for control hazards."""
+        self.pipeline_flush_count+=1
         self.pipeline_reg["IF"] = None
         self.pipeline_reg["ID"] = None
         self.pipeline_reg["EX"] = None
@@ -283,6 +293,7 @@ class Core:
 
         self.pipeline_reg["MEM"] = {"tokens": tokens, "mem_result": mem_result}
         # Clear EX since the instruction moves to MEM.
+        self.inst_executed+=1
         self.pipeline_reg["EX"] = None
 
     def WB(self):

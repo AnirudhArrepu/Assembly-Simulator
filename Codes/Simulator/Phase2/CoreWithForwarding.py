@@ -31,6 +31,15 @@ class CoreWithForwarding:
         }
 
         self.stall_count = 0  # Stall count initialization
+        self.pipeline_flush_count = 0
+        self.inst_executed = 0
+
+    def get_ipc(self):
+        i = self.inst_executed
+        s = self.stall_count
+        pf = self.pipeline_flush_count
+
+        return i/(i+s+pf)
 
     def make_labels(self, insts):
         If_program.program = insts
@@ -100,6 +109,7 @@ class CoreWithForwarding:
 
     def flush_pipeline(self):
         """Flush the pipeline registers for control hazards."""
+        self.pipeline_flush_count+=1
         self.pipeline_reg["IF"] = None
         self.pipeline_reg["ID"] = None
         self.pipeline_reg["EX"] = None
@@ -256,6 +266,7 @@ class CoreWithForwarding:
         }
         # Clear ID as the instruction moves to EX.
         self.pipeline_reg["ID"] = None
+        self.inst_executed+=1
 
     def MEM(self):
         # Only move the instruction from EX to MEM if there is one.
