@@ -1,5 +1,39 @@
-document.addEventListener("DOMContentLoaded", function () {
-    document.getElementById("run-button").addEventListener("click", runProgram);
+document.addEventListener("DOMContentLoaded", function() {
+    const runButton = document.getElementById("run-button");
+    const programInput = document.getElementById("program-input");
+    const displayedOutput = document.getElementById("displayed-output");
+    const dataForwardingCheckbox = document.getElementById("data-forwarding");
+
+    runButton.addEventListener("click", function() {
+        const program = programInput.value;
+        const dataForwarding = dataForwardingCheckbox.checked;
+        const latencies = getLatencies();
+        const output = runProgram(program, dataForwarding, latencies);
+        displayedOutput.value = output;
+    });
+
+    function getLatencies() {
+        const latencyInputs = document.querySelectorAll("input[id^='latency-']");
+        const latencies = {};
+        latencyInputs.forEach(input => {
+            const instruction = input.id.replace('latency-', '');
+            latencies[instruction] = parseInt(input.value) || 0;
+        });
+        return latencies;
+    }
+
+    function runProgram(program, dataForwarding, latencies) {
+        
+        let output = `Running program with data forwarding ${dataForwarding ? 'enabled' : 'disabled'}...\n\n`;
+        output += `Program:\n${program}\n\n`;
+        output += `Latencies:\n${JSON.stringify(latencies, null, 2)}\n\n`;
+        output += `Output:\n`;
+
+       
+        output += `Program executed successfully.`;
+
+        return output;
+    }
 });
 
 function runProgram() {
