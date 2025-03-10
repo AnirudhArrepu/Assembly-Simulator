@@ -68,6 +68,17 @@ addi x5 x4 4
 label: addi x0 x0 3
 '''
 
+program = '''
+.data
+
+.text
+addi x3 x0 2
+loop: bne x3 x0 exit
+addi x3 x3 -1
+j loop
+exit: addi x0 x0 0
+'''
+
 forward = False
 # forward = True
 

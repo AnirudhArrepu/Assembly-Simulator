@@ -5,7 +5,7 @@ class If_program:
     def IF(pipeline_reg_if, pc):
         # Only fetch a new instruction if the IF register is empty.
         if pipeline_reg_if is not None:
-            return  pc, pipeline_reg_if # Preserve stalled instruction in IF.
+            return pc, pipeline_reg_if  # Preserve stalled instruction in IF.
         if pc < len(If_program.program):
             pipeline_reg_if = If_program.program[pc]
             print("IF:", If_program.program[pc])
@@ -14,6 +14,7 @@ class If_program:
             pipeline_reg_if = None
 
         return pc, pipeline_reg_if
+
 
 class Core:
     def __init__(self, coreid, memory):
@@ -26,6 +27,7 @@ class Core:
         self.data_segment = {}
         self.memory_data_index = 1020
 
+        # Even though latencies remain defined, they will not be used.
         self.latencies = {
             "add": 0,
             "addi": 0,
@@ -35,7 +37,7 @@ class Core:
         # x31 is the special register
         self.registers[31] = coreid
 
-        # Pipeline registers – note that we no longer use a global "latency" field.
+        # Pipeline registers – no latency fields are needed.
         self.pipeline_reg = {
             "IF": None,
             "ID": None,
@@ -143,7 +145,7 @@ class Core:
             self.pipeline_reg["ID"] = None
         else:
             tokens = self.pipeline_reg["IF"].split()
-            # Remove label if present
+            # Remove label if present.
             if tokens and ":" in tokens[0]:
                 tokens.pop(0)
             # For branch/jump instructions, bypass hazard detection.
@@ -164,17 +166,9 @@ class Core:
                     self.pipeline_reg["IF"] = None
 
     def EX(self):
-        # If there's already an instruction in EX, check its remaining latency.
+        # If an instruction is already in EX, do nothing.
+        # (It will be moved to MEM in the MEM stage of the next cycle.)
         if self.pipeline_reg["EX"] is not None:
-            if self.pipeline_reg["EX"]["remaining_latency"] > 1:
-                self.pipeline_reg["EX"]["remaining_latency"] -= 1
-                self.stall_count += 1
-                print("Stalling in EX, remaining latency:",
-                      self.pipeline_reg["EX"]["remaining_latency"])
-                return  # Keep the instruction in EX until latency is exhausted.
-            # When remaining_latency == 1, finish execution this cycle:
-            self.pipeline_reg["EX"]["remaining_latency"] = 0
-            # (Instruction stays in EX and will be passed to MEM in MEM stage.)
             return
 
         # If EX is empty, load the instruction from ID.
@@ -190,73 +184,62 @@ class Core:
         # Determine operation and compute result.
         if op == "la":  # la rd, data_label
             result = tokens[2]
-            latency = 0
         elif op == "add":
             rs1 = int(tokens[2][1:])
             rs2 = int(tokens[3][1:])
             result = self.registers[rs1] + self.registers[rs2]
-            latency = self.latencies["add"]
         elif op == "addi":
             rs1 = int(tokens[2][1:])
             imm = int(tokens[3])
             result = self.registers[rs1] + imm
-            latency = self.latencies["addi"]
         elif op == "sub":
             rs1 = int(tokens[2][1:])
             rs2 = int(tokens[3][1:])
             result = self.registers[rs1] - self.registers[rs2]
-            latency = self.latencies["sub"]
         elif op == "slt":
             rs1 = int(tokens[2][1:])
             rs2 = int(tokens[3][1:])
             result = 1 if self.registers[rs1] < self.registers[rs2] else 0
-            latency = 0
         elif op == "li":
             imm = int(tokens[2])
             result = imm
-            latency = 0
         elif op == "lw":
             # lw rd, offset(rs)
             offset, reg = tokens[2].split('(')
             rs = int(reg[:-1][1:])
             mem_addr = self.registers[rs] + int(offset)
-            latency = 0
         elif op == "sw":
             # sw rs, offset(rd)
             offset, reg = tokens[2].split('(')
             rs = int(tokens[1][1:])
             rd = int(reg[:-1][1:])
             mem_addr = self.registers[rd] + int(offset)
-            latency = 1
         elif op in ("bne", "beq", "ble"):
+            # Compute branch condition in EX.
             result = (int(tokens[1][1:]), int(tokens[2][1:]), tokens[3])
-            latency = 0
         elif op == "jal":
             result = self.pc + 1
-            latency = 0
         elif op == "jr":
             rs = int(tokens[1][1:])
             result = self.registers[rs]
-            latency = 0
         elif op == "j":
-            latency = 0
+            # For an unconditional jump no result is needed.
+            pass
         else:
             print("undefined operation in EX stage:", tokens[0])
-            latency = 0
 
-        # Place the instruction in EX along with its computed result and latency counter.
+        # Place the instruction in EX with its computed result.
         self.pipeline_reg["EX"] = {
             "tokens": tokens,
             "result": result,
-            "mem_addr": mem_addr,
-            "remaining_latency": latency
+            "mem_addr": mem_addr
         }
         # Clear ID as the instruction moves to EX.
         self.pipeline_reg["ID"] = None
 
     def MEM(self):
-        # Only move the instruction from EX to MEM if its latency is finished.
-        if self.pipeline_reg["EX"] is None or self.pipeline_reg["EX"]["remaining_latency"] > 0:
+        # Only move the instruction from EX to MEM if there is one.
+        if self.pipeline_reg["EX"] is None:
             self.pipeline_reg["MEM"] = None
             return
 
