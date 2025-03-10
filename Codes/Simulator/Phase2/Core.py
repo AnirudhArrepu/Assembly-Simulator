@@ -18,9 +18,9 @@ class If_program:
 
 class Core:
     latencies = {
-        "add": 1,    # e.g., add takes 3 cycles in EX.
+        "add": 1,    # e.g., add takes 1 cycle in EX.
         "addi": 2,   # addi takes 2 cycles.
-        "sub": 1,    # sub takes 3 cycles.
+        "sub": 1,    # sub takes 1 cycle.
         # Other instructions not specified default to 1 cycle.
     }
 
@@ -55,7 +55,7 @@ class Core:
         s = self.stall_count
         pf = self.pipeline_flush_count
 
-        return i/(i+s+pf)
+        return i / (i + s + pf)
 
     def make_labels(self, insts):
         If_program.program = insts
@@ -141,7 +141,7 @@ class Core:
 
     def flush_pipeline(self):
         """Flush the pipeline registers for control hazards."""
-        self.pipeline_flush_count+=1
+        self.pipeline_flush_count += 1
         self.pipeline_reg["IF"] = None
         self.pipeline_reg["ID"] = None
         self.pipeline_reg["EX"] = None
@@ -244,6 +244,9 @@ class Core:
         elif op == "j":
             # For an unconditional jump no result is needed.
             pass
+        elif op == "ecall":
+            # For ecall, we do no computation in EX.
+            result = 0
         else:
             print("undefined operation in EX stage:", tokens[0])
 
@@ -293,7 +296,7 @@ class Core:
 
         self.pipeline_reg["MEM"] = {"tokens": tokens, "mem_result": mem_result}
         # Clear EX since the instruction moves to MEM.
-        self.inst_executed+=1
+        self.inst_executed += 1
         self.pipeline_reg["EX"] = None
 
     def WB(self):
@@ -343,6 +346,13 @@ class Core:
             print("Jump taken in WB for instruction:", tokens)
             self.pc = self.program_label_map[label]
             self.flush_pipeline()
+        elif op == "ecall":
+            # For ecall, we expect the second token to contain the register to print.
+            reg = int(tokens[1][1:])
+            # Print only the register's value.
+            print("ECALL: Register x{} = {}".format(reg, self.registers[reg]))
+            # Optionally, you can set the final result to that register value.
+            mem_result = self.registers[reg]
 
         self.pipeline_reg["WB"] = {"tokens": tokens, "final_result": mem_result}
 

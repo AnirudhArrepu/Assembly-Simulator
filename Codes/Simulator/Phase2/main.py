@@ -74,31 +74,42 @@ j loop1
 exit1: bne x31 x1 exit2
 loop2: beq x7 x0 exit2
 lw x4 0(x12)
-lw x8 0(x0)
+lw x8 4(x0)
 add x8 x8 x4
-sw x8 0(x0)
+sw x8 4(x0)
 addi x12 x12 4
 addi x7 x7 -1
 j loop2
 exit2: bne x31 x2 exit3
 loop3: beq x7 x0 exit3
 lw x4 0(x13)
-lw x8 0(x0)
+lw x8 8(x0)
 add x8 x8 x4
-sw x8 0(x0)
+sw x8 8(x0)
 addi x13 x13 4
 addi x7 x7 -1
 j loop3
 exit3: bne x31 x3 exit
 loop4: beq x7 x0 exit
 lw x4 0(x14)
-lw x8 0(x0)
+lw x8 12(x0)
 add x8 x8 x4
-sw x8 0(x0)
+sw x8 12(x0)
 addi x14 x14 4
 addi x7 x7 -1
 j loop4
 exit: addi x0 x0 0
+lw x16 0(x0)
+lw x17 4(x0)
+lw x18 8(x0)
+lw x19 12(x0)
+add x16 x16 x17
+add x16 x16 x18
+add x16 x16 x19
+sw x16 16(x0)
+bne x31 x0 exitt
+ecall x16
+exitt: addi x2 x2 0
 '''
 
 #bubble sort
@@ -209,7 +220,7 @@ def main(program, forwarding=False):
     return sim
 
 ## Local ###
-main(program=program2, forwarding=False)
+main(program=program2, forwarding=True)
 
 
 # ### Server ###

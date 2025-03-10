@@ -3,10 +3,10 @@ from Core import If_program
 
 class CoreWithForwarding:
     latencies = {
-            "add": 1,
-            "addi": 2,
-            "sub": 1,
-        }
+        "add": 1,
+        "addi": 2,
+        "sub": 1,
+    }
 
     def __init__(self, coreid, memory):
         self.pc = 0
@@ -38,8 +38,7 @@ class CoreWithForwarding:
         i = self.inst_executed
         s = self.stall_count
         pf = self.pipeline_flush_count
-
-        return i/(i+s+pf)
+        return i / (i + s + pf)
 
     def make_labels(self, insts):
         If_program.program = insts
@@ -109,7 +108,7 @@ class CoreWithForwarding:
 
     def flush_pipeline(self):
         """Flush the pipeline registers for control hazards."""
-        self.pipeline_flush_count+=1
+        self.pipeline_flush_count += 1
         self.pipeline_reg["IF"] = None
         self.pipeline_reg["ID"] = None
         self.pipeline_reg["EX"] = None
@@ -174,7 +173,7 @@ class CoreWithForwarding:
             # When cycles_remaining equals 1, the instruction is now ready to move to MEM.
             return
 
-        # If EX is empty, load the instruction from ID.
+        # EX is empty; so load the instruction from ID.
         if self.pipeline_reg["ID"] is None or self.pipeline_reg["ID"][0].lower() == "nop":
             self.pipeline_reg["EX"] = None
             return
@@ -184,7 +183,7 @@ class CoreWithForwarding:
         result = None
         mem_addr = None
 
-        # Compute result using forwarded register values.
+        # Compute the result using forwarded register values.
         if op == "la":  # la rd, data_label
             result = tokens[2]
         elif op == "add":
@@ -235,7 +234,6 @@ class CoreWithForwarding:
                 print("Branch taken in EX for instruction:", tokens)
                 self.pc = self.program_label_map[tokens[3]]
                 self.flush_pipeline()
-                # Do not set EX; the branch flushes the pipeline.
                 return
             else:
                 print("Branch not taken in EX for instruction:", tokens)
@@ -247,12 +245,14 @@ class CoreWithForwarding:
         elif op == "j":
             # Unconditional jump does not compute a result.
             pass
+        elif op == "ecall":
+            # For ecall, no computation is required in EX.
+            result = 0
         else:
             print("undefined operation in EX stage:", tokens[0])
 
         # Determine the number of cycles this instruction should spend in EX.
-        # If the latency value is 0, we treat it as 1 cycle.
-        latency =  CoreWithForwarding.latencies.get(op, 1)
+        latency = CoreWithForwarding.latencies.get(op, 1)
         if latency < 1:
             latency = 1
 
@@ -264,9 +264,8 @@ class CoreWithForwarding:
             "mem_addr": mem_addr,
             "cycles_remaining": latency
         }
-        # Clear ID as the instruction moves to EX.
         self.pipeline_reg["ID"] = None
-        self.inst_executed+=1
+        self.inst_executed += 1
 
     def MEM(self):
         # Only move the instruction from EX to MEM if there is one.
@@ -275,7 +274,6 @@ class CoreWithForwarding:
             return
 
         ex_data = self.pipeline_reg["EX"]
-        # If the instruction is still in multi-cycle EX, then wait.
         if "cycles_remaining" in ex_data and ex_data["cycles_remaining"] > 1:
             print("MEM stage waiting on EX stage stall for instruction:", ex_data["tokens"])
             self.pipeline_reg["MEM"] = None
@@ -291,8 +289,7 @@ class CoreWithForwarding:
             data_label = tokens[2]
             for val in self.data_segment[data_label]:
                 self.memory.memory[self.memory_data_index] = val
-                print("Core", self.coreid, "writing", val,
-                      "at memory index", self.memory_data_index)
+                print("Core", self.coreid, "writing", val, "at memory index", self.memory_data_index)
                 self.memory_data_index -= 4
             mem_result = self.memory_data_index + 4
         elif op == "lw":
@@ -302,7 +299,6 @@ class CoreWithForwarding:
             self.memory.memory[mem_addr] = self.registers[rs]
 
         self.pipeline_reg["MEM"] = {"tokens": tokens, "mem_result": mem_result}
-        # Clear EX since its result is now in MEM.
         self.pipeline_reg["EX"] = None
 
     def WB(self):
@@ -347,6 +343,11 @@ class CoreWithForwarding:
             print("Jump taken in WB for instruction:", tokens)
             self.pc = self.program_label_map[label]
             self.flush_pipeline()
+        elif op == "ecall":
+            # Expect the ecall instruction in the form: "ecall xN"
+            reg = int(tokens[1][1:])
+            print("ECALL: Register x{} = {}".format(reg, self.registers[reg]))
+            mem_result = self.registers[reg]
 
         self.pipeline_reg["WB"] = {"tokens": tokens, "final_result": mem_result}
 
@@ -358,8 +359,6 @@ class CoreWithForwarding:
                 self.pipeline_reg["WB"] is None)
 
     def pipeline_cycle(self):
-        # Execute pipeline stages in reverse order so that each stage
-        # uses the previous cycle's outputs.
         self.WB()
         self.MEM()
         self.EX()
