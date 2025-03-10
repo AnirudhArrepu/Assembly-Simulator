@@ -79,8 +79,7 @@ j loop
 exit: addi x0 x0 0
 '''
 
-forward = True
-# forward = True
+forward = False
 
 
 
@@ -131,5 +130,33 @@ def main(program, forwarding=False):
 
     return sim
 
+
+app = Flask(__name__)
+CORS(app)
+
+@app.route('/')
+def index():
+    return render_template('gui.html')
+
+@app.route('/simulate', methods=['POST'])
+def simulate():
+    data = request.json
+    program = data['program']
+    forwarding = data['forwarding']
+    print(program)
+    print(forwarding)
+    sim = main(program, forwarding=forwarding)
+
+    memories = sim.memory.printMemory()
+
+    return jsonify({
+        'core0': sim.cores[0].registers,
+        'core1': sim.cores[1].registers,
+        'core2': sim.cores[2].registers,
+        'core3': sim.cores[3].registers,
+        'clock': sim.clock,
+        'memory': memories,
+    })
+
 if __name__ == "__main__":
-    main(program, forwarding=forward)
+    app.run(debug=True)
