@@ -29,7 +29,7 @@ class Core:
         # Latency settings for arithmetic instructions.
         self.latencies = {
             "add": 1,    # Example: 2-cycle latency.
-            "addi": 3,
+            "addi": 1,
             "sub": 1
         }
 

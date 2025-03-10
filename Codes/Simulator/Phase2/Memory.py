@@ -6,21 +6,12 @@ class Memory:
 
     def printMemory(self):
         core1 = []
-        core2 = []
-        core3 = []
-        core4 = []
 
         for i,memory in enumerate(self.memory):
             if i%4 == 0:
                 core1.append(memory)
-            elif i%4 == 1:
-                core2.append(memory)
-            elif i%4 == 2:
-                core3.append(memory)
-            elif i%4 == 3:
-                core4.append(memory)
 
-        self.core_memory = [core1, core2, core3, core4]
+        self.core_memory = core1
 
         return self.core_memory
 
