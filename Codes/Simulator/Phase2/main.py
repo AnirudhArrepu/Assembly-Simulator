@@ -6,7 +6,7 @@ from flask_cors import CORS
 
 #class imports
 from Memory import Memory
-from Core import Core
+from Core import Core, If_program
 from Simulator import Simulator
 
 #bubble sort
@@ -58,15 +58,16 @@ program=''''
 .data
 
 .text
-addi x3 x0 3
-addi x4 x0 4
-add x2 x3 x4
-beq x2 x3 label
-addi x5 x4 4
-label: addi x0 x0 0
+ ADDI X5 X0 3  
+    ADDI X7 X5 6    
+    ADDI X6 X0 2       
+    ADD X4 X5 X6
+    ADDI X8 X4 1
+    ADDI X10 X0 11
+    ADD X9 X0 X0
+    ADDI X13 X0 0
+    ADDI X14 X13 5
 '''
-
-
 
 
 
@@ -102,17 +103,20 @@ def main(program, forwarding=False):
 
     print(f"number of clock cycles: {sim.clock}")
 
-    memories = sim.memory.printMemory()
-    print("Core 0: ", memories[0])
-    print("Core 1: ", memories[1])
-    print("Core 2: ", memories[2])
-    print("Core 3: ", memories[3])
+    shared_memory = sim.memory.printMemory()
+    print(shared_memory)
+    # print("Core 0: ", memories[0])
+    # print("Core 1: ", memories[1])
+    # print("Core 2: ", memories[2])
+    # print("Core 3: ", memories[3])
 
     # Print the stall count for each core
     for i, core in enumerate(sim.cores):
         print(f"Stall count for Core {i}: {core.stall_count}")
 
+    print("IPC", len(If_program.program)/sim.clock)
+
     return sim
 
 if __name__ == "__main__":
-    main(program, forwarding=False)
+    main(program, forwarding=True)
