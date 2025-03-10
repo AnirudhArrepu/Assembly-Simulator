@@ -116,7 +116,7 @@ def main(program, forwarding=False):
     print(f"number of clock cycles: {sim.clock}")
 
     shared_memory = sim.memory.printMemory()
-    print(shared_memory)
+    print("Shared memory: ", shared_memory)
     # print("Core 0: ", memories[0])
     # print("Core 1: ", memories[1])
     # print("Core 2: ", memories[2])
@@ -126,11 +126,15 @@ def main(program, forwarding=False):
     for i, core in enumerate(sim.cores):
         print(f"Stall count for Core {i}: {core.stall_count}")
 
-    print("IPC", len(If_program.program)/sim.clock)
+    print("IPC", len(If_program.program)/(sim.clock-4))
 
     return sim
 
+# ## Local ###
+# main(program=program, forwarding=forward)
 
+
+### Server ###
 app = Flask(__name__)
 CORS(app)
 
@@ -147,7 +151,7 @@ def simulate():
     print(forwarding)
     sim = main(program, forwarding=forwarding)
 
-    memories = sim.memory.printMemory()
+    shared_memory = sim.memory.printMemory()
 
     return jsonify({
         'core0': sim.cores[0].registers,
@@ -155,7 +159,7 @@ def simulate():
         'core2': sim.cores[2].registers,
         'core3': sim.cores[3].registers,
         'clock': sim.clock,
-        'memory': memories,
+        'memory': shared_memory,
     })
 
 if __name__ == "__main__":
