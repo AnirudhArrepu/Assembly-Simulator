@@ -89,16 +89,16 @@ Course project - COA - RISCV Simulator
 - GUI
 ```cmd
 cd Codes
-cd Backend
+cd Simulator/Phase2
 pip install -r requirements.txt
-python simulator.py
+python main.py
 Open 1270.0.1:5000 in browser
 ```
 
 - File Reading: change assembly.asm
 ```bash
 cd Codes
-cd Backend
+cd Simulator/Phase2
 pip install -r requirements.txt
-python file_reading_simulator.py
+python main.py
 ```
