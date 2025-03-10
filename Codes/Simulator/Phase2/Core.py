@@ -297,15 +297,15 @@ class Core:
         if op == "la":
             data_label = tokens[2]
             for val in self.data_segment.get(data_label, []):
-                self.memory.memory[self.memory_data_index + self.coreid] = val
+                self.memory.memory[self.memory_data_index] = val
                 print("Core", self.coreid, "writing", val, "at memory index", self.memory_data_index)
                 self.memory_data_index -= 4
             mem_result = self.memory_data_index + 4
         elif op == "lw":
-            mem_result = self.memory.memory[mem_addr + self.coreid]
+            mem_result = self.memory.memory[mem_addr]
         elif op == "sw":
             rs = int(tokens[1][1:])
-            self.memory.memory[mem_addr + self.coreid] = self.registers[rs]
+            self.memory.memory[mem_addr] = self.registers[rs]
 
         self.pipeline_reg["MEM"] = {"tokens": tokens, "mem_result": mem_result}
         self.pipeline_reg["EX"] = None
