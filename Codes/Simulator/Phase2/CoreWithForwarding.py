@@ -12,17 +12,17 @@ class CoreWithForwarding:
         self.data_segment = {}
         self.memory_data_index = 1020
 
-        # Set nonzero latencies for arithmetic instructions.
+        # Even though latencies remain defined, they will not be used.
         self.latencies = {
-            "add": 1,
-            "addi": 1,
-            "sub": 1,
+            "add": 0,
+            "addi": 0,
+            "sub": 0,
         }
 
         # x31 is the special register
         self.registers[31] = coreid
 
-        # Pipeline registers.
+        # Pipeline registers – no latency fields are needed.
         self.pipeline_reg = {
             "IF": None,
             "ID": None,
@@ -121,53 +121,35 @@ class CoreWithForwarding:
 
     # --- Pipeline Stages ---
     def ID(self):
-        # Prevent overriding an already occupied ID register.
-        if self.pipeline_reg["ID"] is not None:
-            return
-
-        # Only move an instruction from IF to ID if IF is not empty.
         if self.pipeline_reg["IF"] is None:
-            return
-
-        tokens = self.pipeline_reg["IF"].split()
-        # Remove label if present.
-        if tokens and ":" in tokens[0]:
-            tokens.pop(0)
-        # For branch/jump instructions, bypass hazard detection.
-        if tokens[0].lower() in ("bne", "beq", "ble", "j", "jal", "jr"):
-            self.pipeline_reg["ID"] = tokens
-            self.pipeline_reg["IF"] = None
+            self.pipeline_reg["ID"] = None
         else:
-            # Check for a load-use hazard.
-            if self.detect_data_hazard(tokens):
-                print("Stalling in ID due to load-use hazard for instruction:", tokens)
-                self.pipeline_reg["ID"] = ["NOP"]
-                self.stall_count += 1
-            else:
+            tokens = self.pipeline_reg["IF"].split()
+            # Remove label if present.
+            if tokens and ":" in tokens[0]:
+                tokens.pop(0)
+            # For branch/jump instructions, bypass hazard detection.
+            if tokens[0].lower() in ("bne", "beq", "ble", "j", "jal", "jr"):
                 self.pipeline_reg["ID"] = tokens
                 self.pipeline_reg["IF"] = None
+            else:
+                # Check for load-use hazard.
+                if self.detect_data_hazard(tokens):
+                    print("Stalling in ID due to load-use hazard for instruction:", tokens)
+                    self.pipeline_reg["ID"] = ["NOP"]
+                    self.stall_count += 1
+                else:
+                    self.pipeline_reg["ID"] = tokens
+                    self.pipeline_reg["IF"] = None
 
     def EX(self):
-        # If an instruction is already in EX, process it.
+        # If an instruction is already in EX, do nothing.
         if self.pipeline_reg["EX"] is not None:
-            inst = self.pipeline_reg["EX"]
-            tokens = inst["tokens"]
-            op = tokens[0].lower()
-            # For arithmetic instructions, check if latency is still remaining.
-            if op in ("add", "addi", "sub", "slt"):
-                if "remaining_latency" in inst and inst["remaining_latency"] > 0:
-                    print(f"EX stage: stalling {tokens} with remaining latency {inst['remaining_latency']}")
-                    inst["remaining_latency"] -= 1
-                    return  # Remain in EX until latency expires.
-            # Latency complete (or for non-arithmetic op) – move instruction to MEM.
-            result = inst.get("result")
-            mem_addr = inst.get("mem_addr")
-            self.pipeline_reg["MEM"] = {"tokens": tokens, "mem_result": result}
-            self.pipeline_reg["EX"] = None
             return
 
-        # If EX is empty, load an instruction from ID.
-        if self.pipeline_reg["ID"] is None or (self.pipeline_reg["ID"] and self.pipeline_reg["ID"][0].lower() == "nop"):
+        # Load instruction from ID if available.
+        if self.pipeline_reg["ID"] is None or self.pipeline_reg["ID"][0].lower() == "nop":
+            self.pipeline_reg["EX"] = None
             return
 
         tokens = self.pipeline_reg["ID"]
@@ -201,7 +183,7 @@ class CoreWithForwarding:
             # lw rd, offset(rs)
             offset, reg = tokens[2].split('(')
             rs = int(reg[:-1][1:])
-            # Use forwarded value for base register.
+            # Forward value is used for base register.
             base_val = self.forward_value(rs)
             mem_addr = base_val + int(offset)
         elif op == "sw":
@@ -238,35 +220,22 @@ class CoreWithForwarding:
             rs = int(tokens[1][1:])
             result = self.forward_value(rs)
         elif op == "j":
-            # For an unconditional jump, no result is computed.
+            # For an unconditional jump no result is computed.
             pass
         else:
             print("undefined operation in EX stage:", tokens[0])
 
-        # For arithmetic instructions, apply latency logic if needed.
-        if op in ("add", "addi", "sub", "slt"):
-            latency = self.latencies.get(op, 0)
-            if latency > 0:
-                self.pipeline_reg["EX"] = {
-                    "tokens": tokens,
-                    "result": result,
-                    "mem_addr": mem_addr,
-                    "remaining_latency": latency - 1  # Consume one cycle upon entry.
-                }
-                print(f"EX stage: loaded {tokens} with latency {latency}")
-                self.pipeline_reg["ID"] = None  # Prevent ID from overwriting EX.
-                return
-
-        # For non-arithmetic or zero-latency instructions, load immediately into EX.
+        # Place the computed values in EX.
         self.pipeline_reg["EX"] = {
             "tokens": tokens,
             "result": result,
             "mem_addr": mem_addr
         }
+        # Clear ID as the instruction moves to EX.
         self.pipeline_reg["ID"] = None
 
     def MEM(self):
-        # Only move the instruction from EX to MEM if available.
+        # If there is no instruction in EX, clear MEM.
         if self.pipeline_reg["EX"] is None:
             self.pipeline_reg["MEM"] = None
             return
@@ -274,16 +243,13 @@ class CoreWithForwarding:
         ex_data = self.pipeline_reg["EX"]
         tokens = ex_data["tokens"]
         op = tokens[0].lower()
-        # For arithmetic instructions, check if latency remains.
-        if op in ("add", "addi", "sub", "slt") and "remaining_latency" in ex_data and ex_data["remaining_latency"] > 0:
-            return  # Do not transfer to MEM yet.
-        result = ex_data.get("result")
-        mem_addr = ex_data.get("mem_addr")
+        result = ex_data["result"]
+        mem_addr = ex_data["mem_addr"]
         mem_result = result
 
         if op == "la":
             data_label = tokens[2]
-            for val in self.data_segment.get(data_label, []):
+            for val in self.data_segment[data_label]:
                 self.memory.memory[self.memory_data_index] = val
                 print("Core", self.coreid, "writing", val, "at memory index", self.memory_data_index)
                 self.memory_data_index -= 4
@@ -295,6 +261,7 @@ class CoreWithForwarding:
             self.memory.memory[mem_addr] = self.registers[rs]
 
         self.pipeline_reg["MEM"] = {"tokens": tokens, "mem_result": mem_result}
+        # Clear EX since its result is now in MEM.
         self.pipeline_reg["EX"] = None
 
     def WB(self):
@@ -324,7 +291,7 @@ class CoreWithForwarding:
                 print("Branch not taken in WB for instruction:", tokens)
         elif op == "jal":
             rd = int(tokens[1][1:])
-            self.registers[rd] = mem_result  # Return address computed in EX.
+            self.registers[rd] = mem_result
             label = tokens[2]
             print("Jump-and-link taken in WB for instruction:", tokens)
             self.pc = self.program_label_map[label]
@@ -350,7 +317,8 @@ class CoreWithForwarding:
                 self.pipeline_reg["WB"] is None)
 
     def pipeline_cycle(self):
-        # Execute pipeline stages in reverse order so that each stage uses the outputs from the previous cycle.
+        # Execute pipeline stages in reverse order so that each stage
+        # uses the previous cycle's outputs.
         self.WB()
         self.MEM()
         self.EX()
