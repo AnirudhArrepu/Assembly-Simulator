@@ -2,6 +2,12 @@ from Core import If_program
 
 
 class CoreWithForwarding:
+    latencies = {
+            "add": 1,
+            "addi": 2,
+            "sub": 1,
+        }
+
     def __init__(self, coreid, memory):
         self.pc = 0
         self.coreid = coreid
@@ -11,15 +17,6 @@ class CoreWithForwarding:
 
         self.data_segment = {}
         self.memory_data_index = 1020
-
-        # Latency values for operations.
-        # (If a latency is set to 0, we treat it as 1 cycle.)
-        self.latencies = {
-            "add": 1,
-            "addi": 1,
-            "sub": 1,
-            # Other instructions not in the dictionary default to 1 cycle.
-        }
 
         # x31 is the special register.
         self.registers[31] = coreid
@@ -245,7 +242,7 @@ class CoreWithForwarding:
 
         # Determine the number of cycles this instruction should spend in EX.
         # If the latency value is 0, we treat it as 1 cycle.
-        latency = self.latencies.get(op, 1)
+        latency =  CoreWithForwarding.latencies.get(op, 1)
         if latency < 1:
             latency = 1
 

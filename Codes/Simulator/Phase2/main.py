@@ -196,7 +196,7 @@ def main(program, forwarding=False):
     return sim
 
 ## Local ###
-main(program=program, forwarding=True)
+main(program=program, forwarding=False)
 
 
 # ### Server ###

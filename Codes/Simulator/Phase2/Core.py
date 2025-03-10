@@ -17,6 +17,13 @@ class If_program:
 
 
 class Core:
+    latencies = {
+        "add": 1,    # e.g., add takes 3 cycles in EX.
+        "addi": 2,   # addi takes 2 cycles.
+        "sub": 1,    # sub takes 3 cycles.
+        # Other instructions not specified default to 1 cycle.
+    }
+
     def __init__(self, coreid, memory):
         self.pc = 0
         self.coreid = coreid
@@ -26,14 +33,6 @@ class Core:
 
         self.data_segment = {}
         self.memory_data_index = 1020
-
-        # Define latencies for instructions (they can differ).
-        self.latencies = {
-            "add": 1,    # e.g., add takes 3 cycles in EX.
-            "addi": 1,   # addi takes 2 cycles.
-            "sub": 1,    # sub takes 3 cycles.
-            # Other instructions not specified default to 1 cycle.
-        }
 
         # x31 is the special register.
         self.registers[31] = coreid
@@ -239,7 +238,7 @@ class Core:
             print("undefined operation in EX stage:", tokens[0])
 
         # Set the instruction's specific latency.
-        latency = self.latencies.get(op, 1)
+        latency = Core.latencies.get(op, 1)
         # The instruction remains in EX for 'latency' cycles.
         self.pipeline_reg["EX"] = {
             "tokens": tokens,
