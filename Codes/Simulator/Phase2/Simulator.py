@@ -37,6 +37,8 @@ class Simulator:
                 "MEM": None,
                 "WB": None,
             }
+            core.ex_latency_counter = 0
+            core.current_latency = 0
     
         while not all(core.pc >= len(self.program) and core.pipeline_empty() for core in self.cores):
             # print(self.program[self.cores[0].pc])

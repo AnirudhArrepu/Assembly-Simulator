@@ -22,7 +22,7 @@ class Core:
         }
 
         self.stall_count = 0  # Stall count initialization
-
+       
     def make_labels(self, insts):
         self.program = insts
         for i, inst in enumerate(insts):
@@ -153,7 +153,7 @@ class Core:
                     # No hazard: advance the instruction from IF to ID.
                     self.pipeline_reg["ID"] = tokens
                     self.pipeline_reg["IF"] = None
-
+    
     def EX(self):
         tokens = self.pipeline_reg["ID"]
         if tokens is None or tokens[0].lower() == "nop":

@@ -40,8 +40,6 @@ j outer_loop
 outer_exit: j exit
 exit: addi x0 x0 0
 '''
-
-
 # control hazards
 program='''
 .data
@@ -60,16 +58,15 @@ program=''''
 .data
 
 .text
- ADDI X5 X0 3  
-    ADDI X7 X5 6    
-    ADDI X6 X0 2       
-    ADD X4 X5 X6
-    ADDI X8 X4 1
-    ADDI X10 X0 11
-    ADD X9 X0 X0
-    ADDI X13 X0 0
-    ADDI X14 X13 5
+addi x3 x0 3
+addi x4 x0 4
+add x2 x3 x4
+beq x2 x3 label
+addi x5 x4 4
+label: addi x0 x0 0
 '''
+
+
 
 
 
@@ -118,4 +115,4 @@ def main(program, forwarding=False):
     return sim
 
 if __name__ == "__main__":
-    main(program, forwarding=True)
+    main(program, forwarding=False)
