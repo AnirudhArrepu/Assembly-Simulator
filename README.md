@@ -1,6 +1,6 @@
 # Assembly-Simulator
 
-Course project - COA
+Course project - COA - RISCV Simulator
 
 ## Developers
 
@@ -14,26 +14,26 @@ Course project - COA
 
 2.  - Date: 08-03-2025
     - Memebers: Anirudh A, Raghavendra P
-    - Decision: Anirudh completed implementing the shared IF unit and worked on special purpose registers.
+    - Decision: Anirudh completed implementing the shared IF unit, shared Memory and worked on special purpose registers.
 
 3.  - Date: 06-03-2025
     - Memebers: Anirudh A, Raghavendra P
-    - Decision: Raghavendra and Anirudh completed implementing latencies and worked on shared IF unit.
+    - Decision: Raghavendra started GUI, Anirudh completed implementing latencies and worked on shared IF unit.
 
 4.  - Date: 04-03-2025
     - Memebers: Anirudh A, Raghavendra P
-    - Decision: Anirudh Implemented pipelining with data forwarding and Raghavendra worked on latencies. 
+    - Decision: Anirudh Implemented pipelining with data forwarding and Raghavendra tried latencies. 
 5.  - Date: 02-03-2025
     - Memebers: Anirudh A, Raghavendra P
     - Decision: Raghavendra and Anirudh worked for detection and correctness in stall count and finally completed the stall count implementation.
 
 6.  - Date: 28-02-2025
     - Memebers: Anirudh A, Raghavendra P
-    - Decision: Raghavendra completed pipelining without forwarding implementation and Anirudh worked on detecting the RAW hazards and completed code for it.
+    - Decision: Raghavendra tried pipelining without forwarding implementation and Anirudh worked on detecting the RAW hazards and completed code for it, along with forwarding.
 
 7.  - Date: 25-02-2025
     - Memebers: Anirudh A, Raghavendra P
-    - Decision: Raghavendra and Anirudh discussed about the way to implement the pipelining and had scrumly(roughly) worked on it and got the idea for implementation.
+    - Decision: Raghavendra and Anirudh discussed about the way to implement the pipelining and had decided an architecture.
 
 8.  - Date: 19-02-2025
     - Memebers: Anirudh A, Raghavendra P
@@ -89,16 +89,16 @@ Course project - COA
 - GUI
 ```cmd
 cd Codes
-cd Backend
+cd Simulator/Phase2
 pip install -r requirements.txt
-python simulator.py
+python main.py
 Open 1270.0.1:5000 in browser
 ```
 
 - File Reading: change assembly.asm
 ```bash
 cd Codes
-cd Backend
+cd Simulator/Phase2
 pip install -r requirements.txt
-python file_reading_simulator.py
+python main.py
 ```

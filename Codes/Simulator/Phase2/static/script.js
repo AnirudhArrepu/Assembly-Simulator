@@ -43,11 +43,16 @@ document.addEventListener("DOMContentLoaded", function() {
 
             for (let i = 0; i < 4; i++) {
                 if (data[`core${i}`]) {
-                    displayedOutput.value += `Core${i} Registers:\n${JSON.stringify(data[`core${i}`], null, 2)}\n\n`;
+                    displayedOutput.value += `Core${i} IPC: ${JSON.stringify(data[`core${i}`], null, 2)}\n\n`;
+                }
+            }
+            for (let i = 0; i < 4; i++) {
+                if (data[`core${i}`]) {
+                    displayedOutput.value += `Core${i} Stalls: ${JSON.stringify(data[`core${i}_stalls`], null, 2)}\n\n`;
                 }
             }
 
-            displayedOutput.value += `Shared Memory:\n${JSON.stringify(data.memory, null, 2)}\n\n`;
+            displayedOutput.value += `Shared Memory:\n${JSON.stringify(data.memory)}`;
 
             updateRegisterTable(data.core0);  // Update the UI table with core0 register values
         })
