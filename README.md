@@ -8,7 +8,7 @@ Course project - COA - RISCV Simulator
 - [Raghavendra Pappu](https://github.com/raghavaa2506)
 
 ## MOMs
-1.  - Date: 10-02-2025
+1.  - Date: 10-03-2025
     - Memebers: Anirudh A, Raghavendra P
     - Decision: Raghavendra implemented GUI and Anirudh connected it with the backend using flask.
 
@@ -69,7 +69,7 @@ Course project - COA - RISCV Simulator
       1.Anirudh was assigned to complete the Software Design by 10-02-2025.
       2.Raghavendra was tasked with reviewing relevant topics and enhancing his Python knowledge.
 
-15.  - Date: 06-02-2025
+8.  - Date: 06-02-2025
     - Memebers: Anirudh A, Raghavendra P
     - Decision: Decided to complete and build the GPU simulator with `python` language since,
       1.Python has a simpler syntax compared to C/C++, making it easier to implement and understand complex GPU architectures.
