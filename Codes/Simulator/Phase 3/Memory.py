@@ -1,7 +1,6 @@
 class Memory:
     def __init__(self):
         self.memory = [0] *4096
-        # index%4 is the core it belongs to
         self.core_memory = []
 
     def printMemory(self):
