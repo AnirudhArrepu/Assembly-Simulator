@@ -8,44 +8,9 @@ from flask_cors import CORS
 from Memory import Memory
 from Core import Core, If_program
 from Simulator import Simulator
-<<<<<<< HEAD
-
-#bubble sort
-program = '''
-.data
-arr: .word 0x144 0x3 0x9 0x8 0x1 0x100
-
-.text
-la x3 arr
-addi x4 x0 6
-addi x7 x0 0
-outer_loop: addi x11 x4 -1
-beq x7 x11 outer_exit
-addi x10 x3 0
-addi x8 x0 0
-inner_loop: addi x12 x4 0
-sub x12 x12 x7
-addi x12 x12 -1
-beq x8 x12 inner_exit
-lw x5 0(x10)
-lw x6 4(x10)
-slt x11 x6 x5
-beq x11 x0 no_swap
-sw x5 4(x10)
-sw x6 0(x10)
-no_swap: addi x10 x10 4
-addi x8 x8 1
-j inner_loop
-inner_exit: addi x7 x7 1
-j outer_loop
-outer_exit: j exit
-exit: addi x0 x0 0
-'''
-=======
 from CoreWithForwarding import CoreWithForwarding
 
 
->>>>>>> a369ca790b31733c09d5494b7cb0d1b58cc9c470
 # control hazards
 program='''
 .data
@@ -64,19 +29,14 @@ program=''''
 .data
 
 .text
- ADDI X5 X0 3  
-    ADDI X7 X5 6    
-    ADDI X6 X0 2       
-    ADD X4 X5 X6
-    ADDI X8 X4 1
-    ADDI X10 X0 11
-    ADD X9 X0 X0
-    ADDI X13 X0 0
-    ADDI X14 X13 5
+addi x3 x0 3
+addi x4 x0 4
+add x2 x3 x4
+beq x2 x3 label
+addi x5 x4 4
+label: addi x0 x0 3
 '''
 
-<<<<<<< HEAD
-=======
 program = '''
 .data
 
@@ -209,7 +169,6 @@ bne x31 x3 exit4
 addi x5 x3 0
 exit4: addi x0 x0 0
 '''
->>>>>>> a369ca790b31733c09d5494b7cb0d1b58cc9c470
 
 
 def preprocess(program):
@@ -260,60 +219,56 @@ def main(program, forwarding=False):
 
     return sim
 
-# ## Local ###
-# main(program=program2, forwarding=True)
+## Local ###
+main(program=program2, forwarding=False)
 
-with open('./assembly.asm', 'r') as file:
-    program_file = file.read()
+# with open('./assembly.asm', 'r') as file:
+#     program_file = file.read()
 
-### Server ###
-app = Flask(__name__)
-CORS(app)
+# ### Server ###
+# app = Flask(__name__)
+# CORS(app)
 
-@app.route('/')
-def index():
-    return render_template('gui.html')
+# @app.route('/')
+# def index():
+#     return render_template('gui.html')
 
-@app.route('/simulate', methods=['POST'])
-def simulate():
-    data = request.json
-    program = data['program']
-    if program is None:
-        program = program_file
-    forwarding = data['forwarding']
-    latencies = data["latencies"]
+# @app.route('/simulate', methods=['POST'])
+# def simulate():
+#     data = request.json
+#     program = data['program']
+#     if program is None:
+#         program = program_file
+#     forwarding = data['forwarding']
+#     latencies = data["latencies"]
     
-    Core.latencies["add"] = latencies["add"]
-    Core.latencies["addi"] = latencies["addi"]
-    Core.latencies["sub"] = latencies["sub"]
+#     Core.latencies["add"] = latencies["add"]
+#     Core.latencies["addi"] = latencies["addi"]
+#     Core.latencies["sub"] = latencies["sub"]
     
-    CoreWithForwarding.latencies["add"] = latencies["add"]
-    CoreWithForwarding.latencies["addi"] = latencies["addi"]
-    CoreWithForwarding.latencies["sub"] = latencies["sub"]
+#     CoreWithForwarding.latencies["add"] = latencies["add"]
+#     CoreWithForwarding.latencies["addi"] = latencies["addi"]
+#     CoreWithForwarding.latencies["sub"] = latencies["sub"]
     
-    print(program)
-    print(forwarding)
-    sim = main(program, forwarding=forwarding)
+#     print(program)
+#     print(forwarding)
+#     sim = main(program, forwarding=forwarding)
 
-    shared_memory = sim.memory.printMemory()
+#     shared_memory = sim.memory.printMemory()
 
-    return jsonify({
-        'core0': sim.cores[0].get_ipc(),
-        'core1': sim.cores[1].get_ipc(),
-        'core2': sim.cores[2].get_ipc(),
-        'core3': sim.cores[3].get_ipc(),
+#     return jsonify({
+#         'core0': sim.cores[0].get_ipc(),
+#         'core1': sim.cores[1].get_ipc(),
+#         'core2': sim.cores[2].get_ipc(),
+#         'core3': sim.cores[3].get_ipc(),
 
-        'core0_stalls': sim.cores[0].stall_count,
-        'core1_stalls': sim.cores[1].stall_count,
-        'core2_stalls': sim.cores[2].stall_count,
-        'core3_stalls': sim.cores[3].stall_count,
-        'clock': sim.clock,
-        'memory': shared_memory,
-    })
+#         'core0_stalls': sim.cores[0].stall_count,
+#         'core1_stalls': sim.cores[1].stall_count,
+#         'core2_stalls': sim.cores[2].stall_count,
+#         'core3_stalls': sim.cores[3].stall_count,
+#         'clock': sim.clock,
+#         'memory': shared_memory,
+#     })
 
-if __name__ == "__main__":
-<<<<<<< HEAD
-    main(program, forwarding=True)
-=======
-    app.run(debug=True)
->>>>>>> a369ca790b31733c09d5494b7cb0d1b58cc9c470
+# if __name__ == "__main__":
+#     app.run(debug=True)

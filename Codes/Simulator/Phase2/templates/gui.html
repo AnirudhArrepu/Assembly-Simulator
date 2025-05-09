@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>x25++ Simulator</title>
+    <link rel="stylesheet" href="../static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="content">
+            <div class="segments">
+                <h1 class="title">x25++ Simulator</h1>
+                <div class="segment" id="program-segment">
+                    <h2>Program</h2>
+                    <textarea id="program-input" placeholder="Write the program here..."></textarea>
+                </div>
+                <div class="segment" id="console-segment">
+                    <h2>Console</h2>
+                    <textarea id="displayed-output" placeholder="Displayed answer ..."></textarea>
+                </div>
+                <div class="segment" id="options-segment">
+                    <label for="data-forwarding">Enable data forwarding</label>
+                    <input type="checkbox" id="data-forwarding">
+                </div>
+                <button id="run-button">Run</button>
+                <h1>Developed by: </h1>
+                <h2>Raghavendra Pappu and Anirudh Arrepu</h2>
+            </div>
+            
+            <div class="register-table">
+                <h2>Registers</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Alias</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>x0</td><td>zero</td><td>0x00000000</td></tr>
+                        <tr><td>x1</td><td>ra</td><td>0x00000000</td></tr>
+                        <tr><td>x2</td><td>sp</td><td style="background-color: orange;">0x7fffffff0</td></tr>
+                        <tr><td>x3</td><td>gp</td><td style="background-color: orange;">0x10000000</td></tr>
+                        <tr><td>x4</td><td>tp</td><td>0x00000000</td></tr>
+                        <tr><td>x5</td><td>t0</td><td>0x00000000</td></tr>
+                        <tr><td>x6</td><td>t1</td><td>0x00000000</td></tr>
+                        <tr><td>x7</td><td>t2</td><td>0x00000000</td></tr>
+                        <tr><td>x8</td><td>s0</td><td>0x00000000</td></tr>
+                        <tr><td>x9</td><td>s1</td><td>0x00000000</td></tr>
+                        <tr><td>x10</td><td>a0</td><td>0x00000000</td></tr>
+                        <tr><td>x11</td><td>a1</td><td>0x00000000</td></tr>
+                        <tr><td>x12</td><td>a2</td><td>0x00000000</td></tr>
+                        <tr><td>x13</td><td>a3</td><td>0x00000000</td></tr>
+                        <tr><td>x14</td><td>a4</td><td>0x00000000</td></tr>
+                        <tr><td>x15</td><td>a5</td><td>0x00000000</td></tr>
+                        <tr><td>x16</td><td>a6</td><td>0x00000000</td></tr>
+                        <tr><td>x17</td><td>a7</td><td>0x00000000</td></tr>
+                        <tr><td>x18</td><td>s2</td><td>0x00000000</td></tr>
+                        <tr><td>x19</td><td>s3</td><td>0x00000000</td></tr>
+                        <tr><td>x20</td><td>s4</td><td>0x00000000</td></tr>
+                        <tr><td>x21</td><td>s5</td><td>0x00000000</td></tr>
+                        <tr><td>x22</td><td>s6</td><td>0x00000000</td></tr>
+                        <tr><td>x23</td><td>s7</td><td>0x00000000</td></tr>
+                        <tr><td>x24</td><td>s8</td><td>0x00000000</td></tr>
+                        <tr><td>x25</td><td>s9</td><td>0x00000000</td></tr>
+                        <tr><td>x26</td><td>s10</td><td>0x00000000</td></tr>
+                        <tr><td>x27</td><td>s11</td><td>0x00000000</td></tr>
+                        <tr><td>x28</td><td>t3</td><td>0x00000000</td></tr>
+                        <tr><td>x29</td><td>t4</td><td>0x00000000</td></tr>
+                        <tr><td>x30</td><td>t5</td><td>0x00000000</td></tr>
+                        <tr><td>x31</td><td>t6</td><td>0x00000000</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="latency-table">
+                <h2>Instruction Latencies</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Instruction Name</th>
+                            <th>Latency</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>addi</td><td><input type="text" id="latency-addi" placeholder="Enter latency"></td></tr>
+                        <tr><td>add</td><td><input type="text" id="latency-add" placeholder="Enter latency"></td></tr>
+                        <tr><td>sub</td><td><input type="text" id="latency-sub" placeholder="Enter latency"></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script src="../static/script.js"></script>
+</body>
+</html>

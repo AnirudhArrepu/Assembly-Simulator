@@ -12,10 +12,18 @@ class If_program:
             pc += 1
         else:
             pipeline_reg_if = None
+
         return pc, pipeline_reg_if
 
 
 class Core:
+    latencies = {
+        "add": 1,    # e.g., add takes 1 cycle in EX.
+        "addi": 2,   # addi takes 2 cycles.
+        "sub": 1,    # sub takes 1 cycle.
+        # Other instructions not specified default to 1 cycle.
+    }
+
     def __init__(self, coreid, memory):
         self.pc = 0
         self.coreid = coreid
@@ -24,16 +32,9 @@ class Core:
         self.registers = [0] * 32
 
         self.data_segment = {}
-        self.memory_data_index = 1020
+        self.memory_data_index = 4092
 
-        # Latency settings for arithmetic instructions.
-        self.latencies = {
-            "add": 1,    # Example: 2-cycle latency.
-            "addi": 1,
-            "sub": 1
-        }
-
-        # x31 is the special register holding the core id.
+        # x31 is the special register.
         self.registers[31] = coreid
 
         # Pipeline registers.
@@ -45,7 +46,20 @@ class Core:
             "WB": None,
         }
 
+<<<<<<< HEAD
         self.stall_count = 0  # Stall count initialization
+=======
+        self.stall_count = 0  # Total stall cycles.
+        self.pipeline_flush_count = 0
+        self.inst_executed = 0
+
+    def get_ipc(self):
+        i = self.inst_executed
+        s = self.stall_count
+        pf = self.pipeline_flush_count
+
+        return i / (i + s + pf)
+>>>>>>> a369ca790b31733c09d5494b7cb0d1b58cc9c470
 
     def make_labels(self, insts):
         If_program.program = insts
@@ -101,8 +115,8 @@ class Core:
         return sources
 
     def detect_raw_hazard(self, tokens):
-        """Detect a RAW hazard: if any source register in the instruction is
-        the destination of an instruction in EX or MEM."""
+        """Detect a RAW hazard if any source register of the new instruction is the destination
+        of an instruction in EX or MEM."""
         sources = self.extract_source_registers(tokens)
         for stage in ["EX", "MEM"]:
             inst = self.pipeline_reg[stage]
@@ -113,9 +127,7 @@ class Core:
         return False
 
     def detect_war_hazard(self, tokens):
-        """Detect a WAR hazard: if the instruction's destination register is
-        needed as a source by an instruction in EX or MEM.
-        Note: In an in-order pipeline, WAR hazards typically do not occur."""
+        """Detect a WAR hazard if the new instruction's destination is needed by an instruction in EX or MEM."""
         dest = self.get_destination_register(tokens)
         if dest is None:
             return False
@@ -128,31 +140,24 @@ class Core:
         return False
 
     def detect_data_hazard(self, tokens):
-        """Combine RAW (and WAR) hazard detection."""
+        """Combine RAW and WAR hazard detection."""
         return self.detect_raw_hazard(tokens)
 
     def flush_pipeline(self):
         """Flush the pipeline registers for control hazards."""
+        self.pipeline_flush_count += 1
         self.pipeline_reg["IF"] = None
         self.pipeline_reg["ID"] = None
         self.pipeline_reg["EX"] = None
         self.pipeline_reg["MEM"] = None
 
     # --- Pipeline Stages ---
-    def IF(self):
-        # IF stage: Fetch a new instruction only if IF register is empty.
-        self.pc, self.pipeline_reg["IF"] = If_program.IF(self.pipeline_reg["IF"], self.pc)
-
     def ID(self):
-        # Do not override the current instruction in ID if one already exists.
-        if self.pipeline_reg["ID"] is not None:
-            return
-
-        # Only move an instruction from IF to ID if IF is not empty.
         if self.pipeline_reg["IF"] is None:
             self.pipeline_reg["ID"] = None
         else:
             tokens = self.pipeline_reg["IF"].split()
+<<<<<<< HEAD
             # Remove label if present
             if tokens and ":" in tokens[0]:
                 tokens.pop(0)
@@ -172,32 +177,51 @@ class Core:
                     # No hazard: advance the instruction from IF to ID.
                     self.pipeline_reg["ID"] = tokens
                     self.pipeline_reg["IF"] = None
+=======
+            # Remove label if present.
+            if tokens and ":" in tokens[0]:
+                tokens.pop(0)
+            # Check for a structural hazard: if EX is still busy with an instruction that hasn't
+            # finished its multi-cycle execution, stall ID.
+            if (self.pipeline_reg["EX"] is not None and
+                "cycles_remaining" in self.pipeline_reg["EX"] and
+                self.pipeline_reg["EX"]["cycles_remaining"] > 1):
+                print("Stalling in ID due to busy EX stage (structural hazard) for instruction:", tokens)
+                self.pipeline_reg["ID"] = ["NOP"]
+                self.stall_count += 1
+                # Do not clear IF so the instruction remains.
+            else:
+                # For branch/jump instructions, bypass hazard detection.
+                if tokens[0].lower() in ("bne", "beq", "ble", "j", "jal", "jr"):
+                    self.pipeline_reg["ID"] = tokens
+                    self.pipeline_reg["IF"] = None
+                else:
+                    # Check for data hazards.
+                    if self.detect_data_hazard(tokens):
+                        print("Stalling in ID due to data hazard for instruction:", tokens)
+                        self.pipeline_reg["ID"] = ["NOP"]
+                        self.stall_count += 1
+                    else:
+                        # No hazards: move instruction from IF to ID.
+                        self.pipeline_reg["ID"] = tokens
+                        self.pipeline_reg["IF"] = None
+>>>>>>> a369ca790b31733c09d5494b7cb0d1b58cc9c470
 
     def EX(self):
-        # If there is already an instruction in EX, process it.
+        # If an instruction is already in EX, check its remaining cycles.
         if self.pipeline_reg["EX"] is not None:
-            inst = self.pipeline_reg["EX"]
-            tokens = inst["tokens"]
-            op = tokens[0].lower()
-            # For arithmetic instructions, check if we are still in the latency period.
-            if op in ("add", "addi", "sub", "slt"):
-                if "remaining_latency" in inst and inst["remaining_latency"] > 0:
-                    print(f"EX stage: stalling {tokens} with remaining latency {inst['remaining_latency']}")
-                    inst["remaining_latency"] -= 1
-                    return  # Stall in EX until latency cycles have elapsed.
-            # Once latency is done (or for non-arithmetic instructions), move the instruction to MEM.
-            result = inst.get("result")
-            mem_addr = inst.get("mem_addr")
-            self.pipeline_reg["MEM"] = {
-                "tokens": tokens,
-                "mem_result": result
-            }
-            self.pipeline_reg["EX"] = None
+            ex_inst = self.pipeline_reg["EX"]
+            if "cycles_remaining" in ex_inst and ex_inst["cycles_remaining"] > 1:
+                ex_inst["cycles_remaining"] -= 1
+                self.stall_count += 1  # Count this cycle as a stall due to multi-cycle execution.
+                print("EX stage stalling, cycles remaining:", ex_inst["cycles_remaining"],
+                      "for instruction:", ex_inst["tokens"])
+            # If cycles_remaining is 1, the instruction is now ready to be passed to MEM.
             return
 
-        # If EX is empty, try to load an instruction from the ID stage.
-        # If ID holds a stall bubble (NOP), then wait.
-        if self.pipeline_reg["ID"] is None or (self.pipeline_reg["ID"] and self.pipeline_reg["ID"][0].lower() == "nop"):
+        # EX is empty; so load the instruction from ID.
+        if self.pipeline_reg["ID"] is None or self.pipeline_reg["ID"][0].lower() == "nop":
+            self.pipeline_reg["EX"] = None
             return
 
         tokens = self.pipeline_reg["ID"]
@@ -205,8 +229,8 @@ class Core:
         result = None
         mem_addr = None
 
-        # Compute the result or set up the memory address.
-        if op == "la":  # load address
+        # Compute the result based on the operation.
+        if op == "la":  # la rd, data_label
             result = tokens[2]
         elif op == "add":
             rs1 = int(tokens[2][1:])
@@ -228,18 +252,15 @@ class Core:
             imm = int(tokens[2])
             result = imm
         elif op == "lw":
-            # lw rd, offset(rs)
             offset, reg = tokens[2].split('(')
             rs = int(reg[:-1][1:])
             mem_addr = self.registers[rs] + int(offset)
         elif op == "sw":
-            # sw rs, offset(rd)
             offset, reg = tokens[2].split('(')
             rs = int(tokens[1][1:])
             rd = int(reg[:-1][1:])
             mem_addr = self.registers[rd] + int(offset)
         elif op in ("bne", "beq", "ble"):
-            # Compute branch condition in EX.
             result = (int(tokens[1][1:]), int(tokens[2][1:]), tokens[3])
         elif op == "jal":
             result = self.pc + 1
@@ -249,54 +270,46 @@ class Core:
         elif op == "j":
             # For an unconditional jump no result is needed.
             pass
+        elif op == "ecall":
+            # For ecall, we do no computation in EX.
+            result = 0
         else:
             print("undefined operation in EX stage:", tokens[0])
 
-        # For arithmetic instructions, attach the variable latency.
-        if op in ("add", "addi", "sub", "slt"):
-            latency = self.latencies.get(op, 0)
-            if latency > 0:
-                # Start the latency countdown.
-                self.pipeline_reg["EX"] = {
-                    "tokens": tokens,
-                    "result": result,
-                    "mem_addr": mem_addr,
-                    "remaining_latency": latency - 1  # One cycle consumed upon entry.
-                }
-                print(f"EX stage: loaded {tokens} with latency {latency}")
-                # Clear ID after moving the instruction into EX.
-                self.pipeline_reg["ID"] = None
-                return
-
-        # For non-arithmetic instructions (or with zero latency), immediately load into EX.
+        # Set the instruction's specific latency.
+        latency = Core.latencies.get(op, 1)
+        # The instruction remains in EX for 'latency' cycles.
         self.pipeline_reg["EX"] = {
             "tokens": tokens,
             "result": result,
-            "mem_addr": mem_addr
+            "mem_addr": mem_addr,
+            "cycles_remaining": latency
         }
+        # Clear ID since the instruction moves to EX.
         self.pipeline_reg["ID"] = None
 
     def MEM(self):
-        # Only move the instruction from EX to MEM if it is ready.
+        # Only move the instruction from EX to MEM if there is one.
         if self.pipeline_reg["EX"] is None:
             self.pipeline_reg["MEM"] = None
             return
 
         ex_data = self.pipeline_reg["EX"]
-        tokens = ex_data["tokens"]
-        op = tokens[0].lower()
-        # For arithmetic instructions, check if latency is still remaining.
-        if op in ("add", "addi", "sub", "slt") and "remaining_latency" in ex_data and ex_data["remaining_latency"] > 0:
-            # Do not transfer to MEM yet.
+        # If the instruction is still in multi-cycle EX, wait.
+        if "cycles_remaining" in ex_data and ex_data["cycles_remaining"] > 1:
+            print("MEM stage waiting on EX stage stall for instruction:", ex_data["tokens"])
+            self.pipeline_reg["MEM"] = None
             return
 
-        result = ex_data.get("result")
-        mem_addr = ex_data.get("mem_addr")
+        tokens = ex_data["tokens"]
+        op = tokens[0].lower()
+        result = ex_data["result"]
+        mem_addr = ex_data["mem_addr"]
         mem_result = result
 
         if op == "la":
             data_label = tokens[2]
-            for val in self.data_segment.get(data_label, []):
+            for val in self.data_segment[data_label]:
                 self.memory.memory[self.memory_data_index] = val
                 print("Core", self.coreid, "writing", val, "at memory index", self.memory_data_index)
                 self.memory_data_index -= 4
@@ -308,6 +321,8 @@ class Core:
             self.memory.memory[mem_addr] = self.registers[rs]
 
         self.pipeline_reg["MEM"] = {"tokens": tokens, "mem_result": mem_result}
+        # Clear EX since the instruction moves to MEM.
+        self.inst_executed += 1
         self.pipeline_reg["EX"] = None
 
     def WB(self):
@@ -339,7 +354,7 @@ class Core:
             else:
                 print("Branch not taken in WB for instruction:", tokens)
         
-        # For jump-and-link, jump-register, and unconditional jump instructions:
+        # For jump-and-link, jump-register, and unconditional jump instructions.
         elif op == "jal":
             rd = int(tokens[1][1:])
             self.registers[rd] = mem_result  # Return address computed in EX.
@@ -357,6 +372,13 @@ class Core:
             print("Jump taken in WB for instruction:", tokens)
             self.pc = self.program_label_map[label]
             self.flush_pipeline()
+        elif op == "ecall":
+            # For ecall, we expect the second token to contain the register to print.
+            reg = int(tokens[1][1:])
+            # Print only the register's value.
+            print("ECALL: Register x{} = {}".format(reg, self.registers[reg]))
+            # Optionally, you can set the final result to that register value.
+            mem_result = self.registers[reg]
 
         self.pipeline_reg["WB"] = {"tokens": tokens, "final_result": mem_result}
 
@@ -371,11 +393,16 @@ class Core:
     def pipeline_cycle(self):
         """
         Execute one full pipeline cycle.
-        The stages are processed in reverse order (WB → MEM → EX → ID → IF)
-        so that each stage works with the outputs from the previous cycle.
+        Stages are processed in reverse order so that outputs from the previous cycle are used.
         """
         self.WB()
         self.MEM()
         self.EX()
         self.ID()
+<<<<<<< HEAD
         self.IF()
+=======
+        pc, pip_if = If_program.IF(self.pipeline_reg["IF"], self.pc)
+        self.pc = pc
+        self.pipeline_reg["IF"] = pip_if
+>>>>>>> a369ca790b31733c09d5494b7cb0d1b58cc9c470
