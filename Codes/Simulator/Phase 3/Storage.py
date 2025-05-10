@@ -1,94 +1,108 @@
-from .Cache import CacheWithLRU
-from .Memory       import Memory
+import yaml
+from Cache import CacheWithLRU
+from Memory import Memory
 
 class CacheAndMemory:
-    def __init__(self, l1_config: dict, l2_config: dict, memory: Memory, latencies: dict = None):
-        """
-        Two-level write-back cache (L1, L2) with LRU + main memory.
-        Dirty blocks are written back on eviction.
-        """
-        self.l1 = CacheWithLRU(**l1_config)
-        self.l2 = CacheWithLRU(**l2_config)
+    """
+    Multi‑core (4) with private L1‑I / L1‑D and shared L2 + Memory.
+    Write‑back + write‑allocate.
+    """
+
+    def __init__(self,
+                 config_path: str,
+                 memory: Memory,
+                 latencies: dict = None,
+                 num_cores: int = 4):
+        self.num_cores = num_cores
         self.memory = memory
         self.cycles = 0
 
+        # Load cache config from YAML
+        with open(config_path, 'r') as file:
+            config = yaml.safe_load(file)
+
+        l1i_config = config['l1i_config']
+        l1d_config = config['l1d_config']
+        l2_config  = config['l2_config']
+
+        # per‑core private caches
+        self.l1i = [ CacheWithLRU(**l1i_config) for _ in range(num_cores) ]
+        self.l1d = [ CacheWithLRU(**l1d_config) for _ in range(num_cores) ]
+
+        # shared
+        self.l2 = CacheWithLRU(**l2_config)
+
         defaults = {
             'l1_hit':  1,
-            'l1_miss': 5,
-            'l2_hit': 10,
-            'l2_miss':20,
-            'mem':    100
+            'l1_miss': 3,
+            'l2_hit':  4,
+            'l2_miss': 6,
+            'mem':     10
         }
         self.latencies = { **defaults, **(latencies or {}) }
 
-    def read(self, address: int):
+        print(f"Cache latencies: {self.latencies}")
+
+    def read(self, core_id: int, address: int, is_instruction: bool=False) -> int:
+        """
+        Read from L1‑I or L1‑D; on miss go to L2, then memory.
+        Returns the word; updates self.cycles.
+        """
         self.cycles = 0
-        print(f"Read request @ {address}")
+        l1 = self.l1i[core_id] if is_instruction else self.l1d[core_id]
 
         # L1
-        data = self.l1.getFromCache(address)
+        data = l1.getFromCache(address)
         if data is not None:
             self.cycles += self.latencies['l1_hit']
-            print(f"L1 hit, cycles={self.cycles}")
-            return data
+            return data, self.cycles
 
+        # L1 miss
         self.cycles += self.latencies['l1_miss']
-        print(f"L1 miss, cycles={self.cycles}")
 
         # L2
         data = self.l2.getFromCache(address)
         if data is not None:
             self.cycles += self.latencies['l2_hit']
-            print(f"L2 hit, cycles={self.cycles}")
             # promote to L1
-            self.l1.getToCache(address, self.memory)
-            self.cycles += self.latencies['l1_miss']
-            print(f"Refilled L1 from L2, cycles={self.cycles}")
-            return self.l1.getFromCache(address)
+            l1.getToCache(address, self.memory)
+            return l1.getFromCache(address), self.cycles
 
-        # Miss both → main memory
+        # L2 miss
         self.cycles += self.latencies['l2_miss']
-        print(f"L2 miss, cycles={self.cycles}")
+        # memory
         self.cycles += self.latencies['mem']
-        print(f"Access memory, cycles={self.cycles}")
 
-        # Fill L2 then L1
+        # fill L2 then L1
         self.l2.getToCache(address, self.memory)
-        self.cycles += self.latencies['l2_miss']
-        print(f"Refilled L2, cycles={self.cycles}")
 
-        self.l1.getToCache(address, self.memory)
-        self.cycles += self.latencies['l1_miss']
-        print(f"Refilled L1, cycles={self.cycles}")
+        l1.getToCache(address, self.memory)
 
-        return self.l1.getFromCache(address)
+        return l1.getFromCache(address), self.cycles
 
-    def write(self, address: int, value: int):
+    def write(self, core_id: int, address: int, value: int):
         """
-        Write-back: update L1 & L2 only; dirty blocks go back on eviction.
+        Write‑back/write‑allocate:
+         - allocate in L1‑D & L2 on miss, then write both.
         """
         self.cycles = 0
-        print(f"Write request @ {address} ← {value}")
+        l1 = self.l1d[core_id]
 
-        # L1 write-allocate
-        if self.l1.getFromCache(address) is None:
-            self.l1.getToCache(address, self.memory)
+        # L1‑D write‑allocate
+        if l1.getFromCache(address) is None:
+            l1.getToCache(address, self.memory)
             self.cycles += self.latencies['l1_miss']
-            print(f"L1 alloc on write, cycles={self.cycles}")
-        self.l1.writeToCache(address, value)
+        l1.writeToCache(address, value)
         self.cycles += self.latencies['l1_hit']
-        print(f"L1 write, cycles={self.cycles}")
 
-        # L2 write-allocate
+        # L2 write‑allocate
         if self.l2.getFromCache(address) is None:
             self.l2.getToCache(address, self.memory)
             self.cycles += self.latencies['l2_miss']
-            print(f"L2 alloc on write, cycles={self.cycles}")
         self.l2.writeToCache(address, value)
         self.cycles += self.latencies['l2_hit']
-        print(f"L2 write, cycles={self.cycles}")
 
-        print(f"Total write cycles = {self.cycles}")
+        return self.cycles
 
     def get_cycles(self) -> int:
         return self.cycles

@@ -1,33 +1,67 @@
 class If_program:
     program = []
 
+    global_sync_pointer = 0
+
+    global_min_pc_pointer = 0
+
     @staticmethod
-    def IF(pipeline_reg_if, pc):
-        # Only fetch a new instruction if the IF register is empty.
+    def IF(pipeline_reg_if, pc, core):
+        # If there is already an instruction in IF buffer, we may still be
+        # waiting on cache stalls—so don't fetch a new one until cycles_remaining==1.
         if pipeline_reg_if is not None:
-            return pc, pipeline_reg_if  # Preserve stalled instruction in IF.
+            # decrement its stall counter if >1
+            if pipeline_reg_if.get("cycles_remaining", 0) > 1:
+                pipeline_reg_if["cycles_remaining"] -= 1
+                core.stall_count += 1
+                print("IF stage stalling, cycles remaining:", pipeline_reg_if["cycles_remaining"],
+                      "for instruction fetch at PC", pc - 1)
+                return pc, pipeline_reg_if
+            # once cycles_remaining==1, let it move to ID next cycle
+            return pc, pipeline_reg_if
+
+        # no outstanding fetch, initiate a new one if PC in range
         if pc < len(If_program.program):
-            pipeline_reg_if = If_program.program[pc]
-            print("IF:", If_program.program[pc])
+            instr = If_program.program[pc]
+            addr = pc * 4 + 320 #40 is the address offset of the first instruciton in memory
+
+            fetched, stall_cycles = core.candm.read(core.coreid, addr, True)
+
+            pipeline_reg_if = {
+                "raw": instr,
+                "cycles_remaining": max(1, stall_cycles)
+            }
+            print("IF: fetched", instr, "at PC", pc, "with", stall_cycles, "stall cycles")
             pc += 1
+
+            if instr.lower() == "sync":
+                If_program.global_sync_pointer += 1
+                if If_program.global_sync_pointer %4 !=0:
+                    pipeline_reg_if["raw"] = "nop"
         else:
             pipeline_reg_if = None
 
         return pc, pipeline_reg_if
 
 
-class Core:
-    latencies = {
-        "add": 1,    # e.g., add takes 1 cycle in EX.
-        "addi": 2,   # addi takes 2 cycles.
-        "sub": 1,    # sub takes 1 cycle.
-        # Other instructions not specified default to 1 cycle.
-    }
+from Storage import CacheAndMemory
+from Memory import Memory
 
-    def __init__(self, coreid, memory):
+class Core:
+    #base for each of the latencies is 2 (or else it doesnt work)
+    latencies = {
+        "add": 2,
+        "addi":2,
+        "sub": 2,
+    }
+    memory = Memory()
+    candm = CacheAndMemory(config_path="config.yaml",
+                          memory=memory,
+                          num_cores=4)
+
+    def __init__(self, coreid):
         self.pc = 0
         self.coreid = coreid
-        self.memory = memory
         self.program_label_map = {}
         self.registers = [0] * 32
 
@@ -149,10 +183,10 @@ class Core:
 
     # --- Pipeline Stages ---
     def ID(self):
-        if self.pipeline_reg["IF"] is None:
+        if self.pipeline_reg["IF"] is None or self.pipeline_reg["IF"]["cycles_remaining"] > 1 or self.pipeline_reg["IF"]["raw"]== "nop":
             self.pipeline_reg["ID"] = None
         else:
-            tokens = self.pipeline_reg["IF"].split()
+            tokens = self.pipeline_reg["IF"]["raw"].split()
             # Remove label if present.
             if tokens and ":" in tokens[0]:
                 tokens.pop(0)
@@ -164,6 +198,13 @@ class Core:
                 print("Stalling in ID due to busy EX stage (structural hazard) for instruction:", tokens)
                 self.pipeline_reg["ID"] = ["NOP"]
                 self.stall_count += 1
+            #     # Do not clear IF so the instruction remains.
+            # elif (self.pipeline_reg["MEM"] is not None and 
+            #       "cycles_remaining" in self.pipeline_reg["MEM"] and
+            #       self.pipeline_reg["MEM"]["cycles_remaining"] > 1):
+            #     print("Stalling in ID due to busy MEM stage (structural hazard) for instruction:", tokens)
+            #     self.pipeline_reg["ID"] = ["NOP"]
+            #     self.stall_count += 1
                 # Do not clear IF so the instruction remains.
             else:
                 # For branch/jump instructions, bypass hazard detection.
@@ -263,6 +304,17 @@ class Core:
         self.pipeline_reg["ID"] = None
 
     def MEM(self):
+        #check if tehre is already an instruction in MEM stage
+        if self.pipeline_reg["MEM"] is not None:
+            mem_inst = self.pipeline_reg["MEM"]
+            # If it still has >1 cycles to go, consume one and stall
+            if mem_inst.get("cycles_remaining", 0) > 1:
+                mem_inst["cycles_remaining"] -= 1
+                self.stall_count += 1
+                print("MEM stage stalling, cycles remaining:", mem_inst["cycles_remaining"],
+                    "for instruction:", mem_inst["tokens"])
+                return
+
         # Only move the instruction from EX to MEM if there is one.
         if self.pipeline_reg["EX"] is None:
             self.pipeline_reg["MEM"] = None
@@ -280,29 +332,37 @@ class Core:
         result = ex_data["result"]
         mem_addr = ex_data["mem_addr"]
         mem_result = result
+        mem_stalls = 0
 
         if op == "la":
             data_label = tokens[2]
             for val in self.data_segment[data_label]:
-                self.memory.memory[self.memory_data_index] = val
+                # self.memory.memory[self.memory_data_index] = val
+                mem_stalls += Core.candm.write(self.coreid, self.memory_data_index, val)
                 print("Core", self.coreid, "writing", val, "at memory index", self.memory_data_index)
                 self.memory_data_index -= 4
             mem_result = self.memory_data_index + 4
         elif op == "lw":
-            mem_result = self.memory.memory[mem_addr]
+            # mem_result = self.memory.memory[mem_addr]
+            mem_result, mem_stalls = Core.candm.read(self.coreid, mem_addr, False)
         elif op == "sw":
             rs = int(tokens[1][1:])
-            self.memory.memory[mem_addr] = self.registers[rs]
+            # self.memory.memory[mem_addr] = self.registers[rs]
+            mem_stalls = Core.candm.write(self.coreid, mem_addr, self.registers[rs])
 
-        self.pipeline_reg["MEM"] = {"tokens": tokens, "mem_result": mem_result}
+        self.pipeline_reg["MEM"] = {"tokens": tokens, "mem_result": mem_result, "cycles_remaining": max(1, mem_stalls)}
         # Clear EX since the instruction moves to MEM.
         self.inst_executed += 1
         self.pipeline_reg["EX"] = None
+        print(mem_stalls)
 
     def WB(self):
         mem_data = self.pipeline_reg["MEM"]
         if mem_data is None:
             self.pipeline_reg["WB"] = None
+            return
+        
+        if mem_data["cycles_remaining"] > 1:
             return
 
         tokens = mem_data["tokens"]
@@ -373,6 +433,6 @@ class Core:
         self.MEM()
         self.EX()
         self.ID()
-        pc, pip_if = If_program.IF(self.pipeline_reg["IF"], self.pc)
+        pc, pip_if = If_program.IF(self.pipeline_reg["IF"], self.pc, self)
         self.pc = pc
         self.pipeline_reg["IF"] = pip_if

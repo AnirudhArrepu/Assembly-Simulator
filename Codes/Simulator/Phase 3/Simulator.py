@@ -5,9 +5,10 @@ from CoreWithForwarding import CoreWithForwarding
 class Simulator:
     def __init__(self, forwarding=False):
         self.memory = Memory()
+        Core.memory = self.memory
         self.forwarding = forwarding
         if not self.forwarding:
-            self.cores = [Core(i, self.memory) for i in range(4)]
+            self.cores = [Core(i) for i in range(4)]
         else:
             self.cores = [CoreWithForwarding(i, self.memory) for i in range(4)]
         self.program = []
