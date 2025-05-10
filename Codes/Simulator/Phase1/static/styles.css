@@ -34,6 +34,9 @@ body {
     transform: scale(0.8);
     animation: fadeInScale 1.5s ease-in-out forwards;
 }
+.latency-table{
+    padding-top: 400px;
+}
 
 @keyframes fadeInScale {
     0% {
@@ -91,7 +94,15 @@ textarea {
     font-size: 14px;
     
 }
-
+#options-segment {
+    display: block;
+    width: 30%;
+    margin: 10px auto;
+    padding: 10px;
+    font-size: 16px;
+    color: #fff;
+    background-color: #007bff;
+}
 #run-button {
     display: block;
     width: 50%;
@@ -104,7 +115,9 @@ textarea {
     border-radius: 4px;
     cursor: pointer;
 }
-
+#options-segment:hover{
+    background-color: #0056b3;
+}
 #run-button:hover {
     background-color: #0056b3;
 }

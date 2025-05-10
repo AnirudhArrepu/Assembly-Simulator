@@ -8,10 +8,7 @@
 </head>
 <body>
     <div class="container">
-        
-        
         <div class="content">
-            
             <div class="segments">
                 <h1 class="title">x25++ Simulator</h1>
                 <div class="segment" id="program-segment">
@@ -22,9 +19,13 @@
                     <h2>Console</h2>
                     <textarea id="displayed-output" placeholder="Displayed answer ..."></textarea>
                 </div>
+                <div class="segment" id="options-segment">
+                    <label for="data-forwarding">Enable data forwarding</label>
+                    <input type="checkbox" id="data-forwarding">
+                </div>
                 <button id="run-button">Run</button>
                 <h1>Developed by: </h1>
-                <h2>Raghavendra Pappu and Anirudh Arrepu </h2>
+                <h2>Raghavendra Pappu and Anirudh Arrepu</h2>
             </div>
             
             <div class="register-table">
@@ -70,6 +71,33 @@
                         <tr><td>x29</td><td>t4</td><td>0x00000000</td></tr>
                         <tr><td>x30</td><td>t5</td><td>0x00000000</td></tr>
                         <tr><td>x31</td><td>t6</td><td>0x00000000</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="latency-table">
+                <h2>Instruction Latencies</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Instruction Name</th>
+                            <th>Latency</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>addi</td><td><input type="text" id="latency-addi" placeholder="Enter latency"></td></tr>
+                        <tr><td>add</td><td><input type="text" id="latency-add" placeholder="Enter latency"></td></tr>
+                        <tr><td>sub</td><td><input type="text" id="latency-sub" placeholder="Enter latency"></td></tr>
+                        <tr><td>beq</td><td><input type="text" id="latency-beq" placeholder="Enter latency"></td></tr>
+                        <tr><td>sw</td><td><input type="text" id="latency-sw" placeholder="Enter latency"></td></tr>
+                        <tr><td>lw</td><td><input type="text" id="latency-lw" placeholder="Enter latency"></td></tr>
+                        <tr><td>bne</td><td><input type="text" id="latency-bne" placeholder="Enter latency"></td></tr>
+                        <tr><td>slt</td><td><input type="text" id="latency-bne" placeholder="Enter latency"></td></tr>
+                        <tr><td>j</td><td><input type="text" id="latency-bne" placeholder="Enter latency"></td></tr>
+                        <tr><td>jal</td><td><input type="text" id="latency-bne" placeholder="Enter latency"></td></tr>
+                        <tr><td>jr</td><td><input type="text" id="latency-bne" placeholder="Enter latency"></td></tr>
+                        <tr><td>li</td><td><input type="text" id="latency-bne" placeholder="Enter latency"></td></tr>
+                        <tr><td>la</td><td><input type="text" id="latency-bne" placeholder="Enter latency"></td></tr>
                     </tbody>
                 </table>
             </div>

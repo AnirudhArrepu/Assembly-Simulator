@@ -46,6 +46,9 @@ class Core:
             "WB": None,
         }
 
+<<<<<<< HEAD
+        self.stall_count = 0  # Stall count initialization
+=======
         self.stall_count = 0  # Total stall cycles.
         self.pipeline_flush_count = 0
         self.inst_executed = 0
@@ -56,6 +59,7 @@ class Core:
         pf = self.pipeline_flush_count
 
         return i / (i + s + pf)
+>>>>>>> a369ca790b31733c09d5494b7cb0d1b58cc9c470
 
     def make_labels(self, insts):
         If_program.program = insts
@@ -153,6 +157,27 @@ class Core:
             self.pipeline_reg["ID"] = None
         else:
             tokens = self.pipeline_reg["IF"].split()
+<<<<<<< HEAD
+            # Remove label if present
+            if tokens and ":" in tokens[0]:
+                tokens.pop(0)
+            # If the instruction is a branch or jump, bypass hazard detection.
+            if tokens[0].lower() in ("bne", "beq", "ble", "j", "jal", "jr"):
+                self.pipeline_reg["ID"] = tokens
+                self.pipeline_reg["IF"] = None
+            else:
+                # For other instructions, check for data hazards.
+                if self.detect_data_hazard(tokens):
+                    print("Stalling in ID due to data hazard for instruction:", tokens)
+                    # Insert a stall (bubble) by setting a NOP in ID.
+                    # Note: do NOT clear IF so that the same instruction is retried.
+                    self.pipeline_reg["ID"] = ["NOP"]
+                    self.stall_count += 1  # Increment stall count
+                else:
+                    # No hazard: advance the instruction from IF to ID.
+                    self.pipeline_reg["ID"] = tokens
+                    self.pipeline_reg["IF"] = None
+=======
             # Remove label if present.
             if tokens and ":" in tokens[0]:
                 tokens.pop(0)
@@ -180,6 +205,7 @@ class Core:
                         # No hazards: move instruction from IF to ID.
                         self.pipeline_reg["ID"] = tokens
                         self.pipeline_reg["IF"] = None
+>>>>>>> a369ca790b31733c09d5494b7cb0d1b58cc9c470
 
     def EX(self):
         # If an instruction is already in EX, check its remaining cycles.
@@ -373,6 +399,10 @@ class Core:
         self.MEM()
         self.EX()
         self.ID()
+<<<<<<< HEAD
+        self.IF()
+=======
         pc, pip_if = If_program.IF(self.pipeline_reg["IF"], self.pc)
         self.pc = pc
         self.pipeline_reg["IF"] = pip_if
+>>>>>>> a369ca790b31733c09d5494b7cb0d1b58cc9c470
