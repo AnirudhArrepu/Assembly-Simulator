@@ -13,6 +13,10 @@ l2_config:
   block_size: 64
   associativity: 8
 
+scratch_pad_config:
+  size: 256
+  block_size: 64
+
 inst_latencies:
   add: 1
   addi: 1

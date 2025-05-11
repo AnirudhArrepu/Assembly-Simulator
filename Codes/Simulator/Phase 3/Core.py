@@ -1,7 +1,7 @@
 class If_program:
     program = []
 
-    global_sync_pointer = 0
+    global_sync_pointer = [[0, 0, 0, 0] for _ in range(len(program))]
 
     global_min_pc_pointer = 0
 
@@ -15,9 +15,17 @@ class If_program:
                 pipeline_reg_if["cycles_remaining"] -= 1
                 core.stall_count += 1
                 print("IF stage stalling, cycles remaining:", pipeline_reg_if["cycles_remaining"],
-                      "for instruction fetch at PC", pc - 1)
+                      "for instruction fetch at PC", pc - 1, If_program.program[pc - 1])
                 return pc, pipeline_reg_if
             # once cycles_remaining==1, let it move to ID next cycle
+            else:
+                # checking if all cores have come to sync or else adding a cycle stoppage (ensuring not refetching the same instruction again and again)
+                if pipeline_reg_if["raw"] == "sync":
+                    If_program.global_sync_pointer[pc][core.coreid] = 1
+                    print("Core", core.coreid, "sync instruction at PC", pc - 1)
+                    if min(If_program.global_sync_pointer[pc]) == 0:
+                        pipeline_reg_if["cycles_remaining"] += 1
+
             return pc, pipeline_reg_if
 
         # no outstanding fetch, initiate a new one if PC in range
@@ -31,14 +39,11 @@ class If_program:
                 "raw": instr,
                 "cycles_remaining": max(1, stall_cycles)
             }
-            print("IF: fetched", instr, "at PC", pc, "with", stall_cycles, "stall cycles")
+            print(core.coreid, "IF: fetched", instr, "at PC", pc, "with", stall_cycles, "stall cycles")
             pc += 1
 
-            if instr.lower() == "sync":
-                If_program.global_sync_pointer += 1
-                if If_program.global_sync_pointer %4 !=0:
-                    pipeline_reg_if["raw"] = "nop"
         else:
+            print(core.coreid, "pc greater than limits")
             pipeline_reg_if = None
 
         return pc, pipeline_reg_if
@@ -48,11 +53,10 @@ from Storage import CacheAndMemory
 from Memory import Memory
 
 class Core:
-    #base for each of the latencies is 2 (or else it doesnt work)
     latencies = {
-        "add": 2,
-        "addi":2,
-        "sub": 2,
+        "add": 1,
+        "addi": 1,
+        "sub": 1,
     }
     memory = Memory()
     candm = CacheAndMemory(config_path="config.yaml",
@@ -93,6 +97,7 @@ class Core:
 
     def make_labels(self, insts):
         If_program.program = insts
+        If_program.global_sync_pointer = [[0,0,0,0] for _ in range(len(insts))]
         for i, inst in enumerate(insts):
             tokens = inst.split()
             if tokens and ":" in tokens[0]:
@@ -104,7 +109,7 @@ class Core:
     def get_destination_register(self, tokens):
         """Return the destination register for instructions that write to a register."""
         op = tokens[0].lower()
-        if op in ("add", "addi", "sub", "slt", "li", "lw", "jal", "la"):
+        if op in ("add", "addi", "sub", "slt", "li", "lw", "lw_spm", "jal", "la"):
             try:
                 return int(tokens[1][1:])
             except Exception:
@@ -119,13 +124,13 @@ class Core:
             sources = [int(tokens[2][1:]), int(tokens[3][1:])]
         elif op in ("addi",):
             sources = [int(tokens[2][1:])]
-        elif op == "lw":
+        elif op == "lw" or op == "lw_spm":
             # Format: lw rd, offset(rs) => source is rs.
             parts = tokens[2].split('(')
             if len(parts) >= 2:
                 reg_str = parts[1].replace(")", "")
                 sources = [int(reg_str[1:])]
-        elif op == "sw":
+        elif op == "sw" or op == "sw_spm":
             # Format: sw rs, offset(rd) => sources: rs and rd.
             try:
                 src1 = int(tokens[1][1:])
@@ -266,11 +271,11 @@ class Core:
         elif op == "li":
             imm = int(tokens[2])
             result = imm
-        elif op == "lw":
+        elif op == "lw" or op == "lw_spm":
             offset, reg = tokens[2].split('(')
             rs = int(reg[:-1][1:])
             mem_addr = self.registers[rs] + int(offset)
-        elif op == "sw":
+        elif op == "sw" or op == "sw_spm":
             offset, reg = tokens[2].split('(')
             rs = int(tokens[1][1:])
             rd = int(reg[:-1][1:])
@@ -349,6 +354,14 @@ class Core:
             rs = int(tokens[1][1:])
             # self.memory.memory[mem_addr] = self.registers[rs]
             mem_stalls = Core.candm.write(self.coreid, mem_addr, self.registers[rs])
+        elif op == "sw_spm":
+            rs = int(tokens[1][1:])
+            # self.memory.scratch_pad[self.coreid][mem_addr] = self.registers[rs]
+            mem_stalls = Core.candm.write_scratch_pad(self.coreid, mem_addr, self.registers[rs])
+        elif op == "lw_spm":
+            # mem_result = self.memory.scratch_pad[self.coreid][mem_addr]
+            mem_result, mem_stalls = Core.candm.read_scratch_pad(self.coreid, mem_addr)
+        
 
         self.pipeline_reg["MEM"] = {"tokens": tokens, "mem_result": mem_result, "cycles_remaining": max(1, mem_stalls)}
         # Clear EX since the instruction moves to MEM.
@@ -358,11 +371,8 @@ class Core:
 
     def WB(self):
         mem_data = self.pipeline_reg["MEM"]
-        if mem_data is None:
+        if mem_data is None or mem_data["cycles_remaining"] > 1:
             self.pipeline_reg["WB"] = None
-            return
-        
-        if mem_data["cycles_remaining"] > 1:
             return
 
         tokens = mem_data["tokens"]
@@ -370,7 +380,7 @@ class Core:
         mem_result = mem_data["mem_result"]
 
         # For non-control instructions, write the result to the destination register.
-        if op in ("la", "add", "addi", "sub", "slt", "li", "lw"):
+        if op in ("la", "add", "addi", "sub", "slt", "li", "lw", "lw_spm"):
             rd = int(tokens[1][1:])
             self.registers[rd] = mem_result
 

@@ -174,7 +174,8 @@ program4 = '''
 .data
 
 .text
-addi x1 x0 4
+lw x1 0(x0)
+addi x2 x2 0
 '''
 
 

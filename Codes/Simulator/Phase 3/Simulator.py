@@ -42,6 +42,7 @@ class Simulator:
         while not all(core.pc >= len(self.program) and core.pipeline_empty() for core in self.cores):
             # print(self.program[self.cores[0].pc])
             for core in self.cores:
+                # print("core", core.coreid, "pc", core.pc)
                 core.pipeline_cycle()
             self.clock += 1
         self.clock -= 1

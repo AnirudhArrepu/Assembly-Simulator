@@ -24,10 +24,14 @@ class CacheAndMemory:
         l1i_config = config['l1i_config']
         l1d_config = config['l1d_config']
         l2_config  = config['l2_config']
+        scratch_pad_config = config['scratch_pad_config']
 
         # per‑core private caches
         self.l1i = [ CacheWithLRU(**l1i_config) for _ in range(num_cores) ]
         self.l1d = [ CacheWithLRU(**l1d_config) for _ in range(num_cores) ]
+        self.scratch_pad = [ [0]*scratch_pad_config["size"] for _ in range(num_cores)]
+        print(f"Scratch pad size: {scratch_pad_config['size']}")
+        print(f"Scratch pad: {self.scratch_pad}")
 
         # shared
         self.l2 = CacheWithLRU(**l2_config)
@@ -37,11 +41,32 @@ class CacheAndMemory:
             'l1_miss': 3,
             'l2_hit':  4,
             'l2_miss': 6,
-            'mem':     10
+            'mem':     10,
+            'scratch_pad': 1,
         }
         self.latencies = { **defaults, **(latencies or {}) }
 
         print(f"Cache latencies: {self.latencies}")
+
+    def read_scratch_pad(self, core_id: int, address: int) -> int:
+        """
+        Read from scratch pad memory.
+        Returns the word; updates self.cycles.
+        """
+        self.cycles = 0
+        data = self.scratch_pad[core_id][address]
+        self.cycles += self.latencies['scratch_pad']
+        return data, self.cycles
+    
+    def write_scratch_pad(self, core_id: int, address: int, value: int):
+        """
+        Write to scratch pad memory.
+        Returns the word; updates self.cycles.
+        """
+        self.cycles = 0
+        self.scratch_pad[core_id][address] = value
+        self.cycles += self.latencies['scratch_pad']
+        return self.cycles
 
     def read(self, core_id: int, address: int, is_instruction: bool=False) -> int:
         """
