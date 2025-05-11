@@ -1,0 +1,6 @@
+read ex stage latencies from config file
+read cache latencies from config file 
+
+reflect cache in forwaring core
+
+implement another cache replacement policy

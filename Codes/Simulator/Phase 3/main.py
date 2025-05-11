@@ -1,4 +1,3 @@
-from concurrent.futures import ThreadPoolExecutor
 import matplotlib.pyplot as plt
 import numpy as np
 from flask import Flask, request, jsonify, render_template
@@ -170,6 +169,15 @@ addi x5 x3 0
 exit4: addi x0 x0 0
 '''
 
+#testing cache
+program4 = '''
+.data
+
+.text
+lw x1 0(x0)
+addi x2 x2 0
+'''
+
 
 def preprocess(program):
     #getting data segment
@@ -220,7 +228,7 @@ def main(program, forwarding=False):
     return sim
 
 ## Local ###
-main(program=program2, forwarding=False)
+main(program=program4, forwarding=False)
 
 # with open('./assembly.asm', 'r') as file:
 #     program_file = file.read()
