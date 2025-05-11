@@ -309,7 +309,7 @@ class Core:
         self.pipeline_reg["ID"] = None
 
     def MEM(self):
-        #check if tehre is already an instruction in MEM stage
+        # Check if there is already an instruction in MEM stage
         if self.pipeline_reg["MEM"] is not None:
             mem_inst = self.pipeline_reg["MEM"]
             # If it still has >1 cycles to go, consume one and stall
@@ -341,33 +341,58 @@ class Core:
 
         if op == "la":
             data_label = tokens[2]
-            for val in self.data_segment[data_label]:
-                # self.memory.memory[self.memory_data_index] = val
-                mem_stalls += Core.candm.write(self.coreid, self.memory_data_index, val)
-                print("Core", self.coreid, "writing", val, "at memory index", self.memory_data_index)
-                self.memory_data_index -= 4
-            mem_result = self.memory_data_index + 4
+            
+            # New implementation with type checking for data_segment entries
+            if data_label in self.data_segment:
+                data_entry = self.data_segment[data_label]
+                
+                # If data_entry is a dictionary (new format)
+                if isinstance(data_entry, dict):
+                    base_address = data_entry.get('address', 0)
+                    if 'values' in data_entry:
+                        values = data_entry['values']
+                        for val in values:
+                            mem_stalls += Core.candm.write(self.coreid, self.memory_data_index, val)
+                            print("Core", self.coreid, "writing", val, "at memory index", self.memory_data_index)
+                            self.memory_data_index -= 4
+                    mem_result = base_address if base_address else (self.memory_data_index + 4)
+                    
+                # If data_entry is a list (old format)
+                elif isinstance(data_entry, list):
+                    for val in data_entry:
+                        mem_stalls += Core.candm.write(self.coreid, self.memory_data_index, val)
+                        print("Core", self.coreid, "writing", val, "at memory index", self.memory_data_index)
+                        self.memory_data_index -= 4
+                    mem_result = self.memory_data_index + 4
+                    
+                # If data_entry is an integer (memory address)
+                elif isinstance(data_entry, int):
+                    mem_result = data_entry
+                    
+            else:
+                print(f"Warning: Label '{data_label}' not found in data segment")
+                mem_result = 0  # Default value when label is not found
+                
         elif op == "lw":
-            # mem_result = self.memory.memory[mem_addr]
             mem_result, mem_stalls = Core.candm.read(self.coreid, mem_addr, False)
         elif op == "sw":
             rs = int(tokens[1][1:])
-            # self.memory.memory[mem_addr] = self.registers[rs]
             mem_stalls = Core.candm.write(self.coreid, mem_addr, self.registers[rs])
         elif op == "sw_spm":
             rs = int(tokens[1][1:])
-            # self.memory.scratch_pad[self.coreid][mem_addr] = self.registers[rs]
+            # Safety check - make sure mem_addr is valid for scratch pad
+            print(f"Core {self.coreid} attempting sw_spm with address {mem_addr}, value {self.registers[rs]}")
             mem_stalls = Core.candm.write_scratch_pad(self.coreid, mem_addr, self.registers[rs])
         elif op == "lw_spm":
-            # mem_result = self.memory.scratch_pad[self.coreid][mem_addr]
+            # Safety check - make sure mem_addr is valid for scratch pad
+            print(f"Core {self.coreid} attempting lw_spm with address {mem_addr}")
             mem_result, mem_stalls = Core.candm.read_scratch_pad(self.coreid, mem_addr)
-        
 
         self.pipeline_reg["MEM"] = {"tokens": tokens, "mem_result": mem_result, "cycles_remaining": max(1, mem_stalls)}
         # Clear EX since the instruction moves to MEM.
         self.inst_executed += 1
         self.pipeline_reg["EX"] = None
-        print(mem_stalls)
+        print("Memory stalls:", mem_stalls)
 
     def WB(self):
         mem_data = self.pipeline_reg["MEM"]

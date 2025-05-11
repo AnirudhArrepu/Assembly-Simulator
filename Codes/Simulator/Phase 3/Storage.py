@@ -29,8 +29,9 @@ class CacheAndMemory:
         # per‑core private caches
         self.l1i = [ CacheWithLRU(**l1i_config) for _ in range(num_cores) ]
         self.l1d = [ CacheWithLRU(**l1d_config) for _ in range(num_cores) ]
-        self.scratch_pad = [ [0]*scratch_pad_config["size"] for _ in range(num_cores)]
-        print(f"Scratch pad size: {scratch_pad_config['size']}")
+        self.scratch_pad_size = scratch_pad_config["size"]
+        self.scratch_pad = [ [0]*self.scratch_pad_size for _ in range(num_cores)]
+        print(f"Scratch pad size: {self.scratch_pad_size}")
         print(f"Scratch pad: {self.scratch_pad}")
 
         # shared
@@ -48,15 +49,42 @@ class CacheAndMemory:
 
         print(f"Cache latencies: {self.latencies}")
 
+    def _normalize_spm_address(self, address):
+        """
+        Normalize the scratch pad memory address to ensure it's within bounds.
+        Returns the normalized address and whether it's valid.
+        """
+        # Simple address translation for scratch pad - use modulo to wrap around
+        normalized_address = address % self.scratch_pad_size if address >= 0 else 0
+        return normalized_address
+
     def read_scratch_pad(self, core_id: int, address: int) -> int:
         """
         Read from scratch pad memory.
         Returns the word; updates self.cycles.
         """
         self.cycles = 0
-        data = self.scratch_pad[core_id][address]
-        self.cycles += self.latencies['scratch_pad']
-        return data, self.cycles
+        
+        # Check core_id is valid
+        if core_id < 0 or core_id >= self.num_cores:
+            print(f"Warning: Invalid core_id {core_id} for scratch pad read")
+            return 0, self.cycles
+        
+        # Normalize address to ensure it's within bounds
+        normalized_address = self._normalize_spm_address(address)
+        
+        # Check if address is valid for scratch pad
+        if normalized_address >= self.scratch_pad_size:
+            print(f"Warning: Address {address} (normalized to {normalized_address}) out of range for scratch pad read")
+            return 0, self.cycles
+            
+        try:
+            data = self.scratch_pad[core_id][normalized_address]
+            self.cycles += self.latencies['scratch_pad']
+            return data, self.cycles
+        except Exception as e:
+            print(f"Error reading from scratch pad: {e}")
+            return 0, self.cycles
     
     def write_scratch_pad(self, core_id: int, address: int, value: int):
         """
@@ -64,8 +92,26 @@ class CacheAndMemory:
         Returns the word; updates self.cycles.
         """
         self.cycles = 0
-        self.scratch_pad[core_id][address] = value
-        self.cycles += self.latencies['scratch_pad']
+        
+        # Check core_id is valid
+        if core_id < 0 or core_id >= self.num_cores:
+            print(f"Warning: Invalid core_id {core_id} for scratch pad write")
+            return self.cycles
+        
+        # Normalize address to ensure it's within bounds
+        normalized_address = self._normalize_spm_address(address)
+        
+        # Check if address is valid for scratch pad
+        if normalized_address >= self.scratch_pad_size:
+            print(f"Warning: Address {address} (normalized to {normalized_address}) out of range for scratch pad write")
+            return self.cycles
+            
+        try:
+            self.scratch_pad[core_id][normalized_address] = value
+            self.cycles += self.latencies['scratch_pad']
+        except Exception as e:
+            print(f"Error writing to scratch pad: {e}")
+        
         return self.cycles
 
     def read(self, core_id: int, address: int, is_instruction: bool=False) -> int:
