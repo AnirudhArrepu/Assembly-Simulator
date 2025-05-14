@@ -1,5 +1,5 @@
 from Memory import Memory
-from Core import Core, If_program
+from Core import Core
 from CoreWithForwarding import CoreWithForwarding
 
 class Simulator:
@@ -9,10 +9,8 @@ class Simulator:
         self.forwarding = forwarding
         if not self.forwarding:
             self.cores = [Core(i) for i in range(4)]
-            If_program.cores = self.cores
         else:
             self.cores = [CoreWithForwarding(i, self.memory) for i in range(4)]
-            If_program.cores = self.cores
         self.program = []
         self.clock = 0
         self.data_segment = {}
@@ -44,10 +42,8 @@ class Simulator:
         while not all(core.pc >= len(self.program) and core.pipeline_empty() for core in self.cores):
             # print(self.program[self.cores[0].pc])
             for core in self.cores:
-                print("core", core.coreid, "pc", core.pc)
+                # print("core", core.coreid, "pc", core.pc)
                 core.pipeline_cycle()
-            print(If_program.setInactive)
-            print(If_program.active_pcs)
             self.clock += 1
         self.clock -= 1
 

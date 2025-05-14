@@ -85,6 +85,7 @@ class If_program:
                 if If_program.global_sync_pointer[pc-1] != [1,1,1,1]:
                     if pipeline_reg_if["cycles_remaining"] == 1:
                         pipeline_reg_if["cycles_remaining"] += 1
+                        print("Core", core.coreid, "waiting for other cores to sync at PC", pc - 1)
                     print("Core", core.coreid, "waiting for other cores to sync at PC", pc - 1)
 
         else:
