@@ -51,7 +51,7 @@ class If_program:
             pipeline_reg_if = None
         return pc, pipeline_reg_if
 
-class Core:
+class CoreWithForwarding:
     latencies = {"add": 1, "addi": 1, "sub": 1}
     memory = Memory()
     candm = CacheAndMemory(config_path="config.yaml",

@@ -1,5 +1,5 @@
 l1d_config:
-  cache_size: 40
+  cache_size: 400
   block_size: 4
   associativity: 1
 
@@ -14,7 +14,7 @@ l2_config:
   associativity: 8
 
 scratch_pad_config:
-  size: 256
+  size: 400
   block_size: 64
 
 inst_latencies:
