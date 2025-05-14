@@ -1,8 +1,9 @@
 read ex stage latencies from config file
-read cache latencies from config file 
+read cache latencies from config file
 
 reflect cache and spm in forwaring core
-
 implement another cache replacement policy
 
-if stage parallelism
+
+eviction in cache is wrong. 
+if l1 block is being evicted, it is not invalidated in l2 and is directly pushed to memory. this has to change

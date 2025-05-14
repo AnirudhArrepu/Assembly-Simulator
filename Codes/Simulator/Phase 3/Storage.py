@@ -1,6 +1,7 @@
 import yaml
 from Cache import CacheWithLRU
 from Memory import Memory
+import math
 
 class CacheAndMemory:
     """
@@ -25,6 +26,8 @@ class CacheAndMemory:
         l1d_config = config['l1d_config']
         l2_config  = config['l2_config']
         scratch_pad_config = config['scratch_pad_config']
+
+        self.l1d_config = l1d_config
 
         # per‑core private caches
         self.l1i = [ CacheWithLRU(**l1i_config) for _ in range(num_cores) ]
@@ -90,7 +93,7 @@ class CacheAndMemory:
         if data is not None:
             self.cycles += self.latencies['l2_hit']
             # promote to L1
-            l1.getToCache(address, self.memory)
+            l1.getToCache(address, self.memory, self.l2)
             return l1.getFromCache(address), self.cycles
 
         # L2 miss
@@ -101,7 +104,7 @@ class CacheAndMemory:
         # fill L2 then L1
         self.l2.getToCache(address, self.memory)
 
-        l1.getToCache(address, self.memory)
+        l1.getToCache(address, self.memory, self.l2)
 
         return l1.getFromCache(address), self.cycles
 
@@ -115,7 +118,7 @@ class CacheAndMemory:
 
         # L1‑D write‑allocate
         if l1.getFromCache(address) is None:
-            l1.getToCache(address, self.memory)
+            l1.getToCache(address, self.memory, self.l2)
             self.cycles += self.latencies['l1_miss']
         l1.writeToCache(address, value)
         self.cycles += self.latencies['l1_hit']
@@ -128,6 +131,44 @@ class CacheAndMemory:
         self.cycles += self.latencies['l2_hit']
 
         return self.cycles
+    
+    def flush_l1_dirty_to_l2(self, core_id: int) -> int:
+        """
+        Write-back all dirty blocks from L1‑D of the given core into shared L2.
+        Returns accumulated stall cycles.
+        """
+        self.cycles = 0
+        l1 = self.l1d[core_id]
+
+        print("flushing l1 of core ", core_id)
+
+        # address splitting parameters
+        offset_bits = int(math.log2(l1.block_size))
+        index_bits  = int(math.log2(l1.num_sets))
+
+        # iterate each set and block in L1-D
+        for set_idx, cache_set in enumerate(l1.cache):
+            for block in cache_set:
+                if block['valid'] and block['dirty']:
+                    tag = block['tag']
+                    # reconstruct base address of this block
+                    base_addr = (tag << (index_bits + offset_bits)) | (set_idx << offset_bits)
+
+                    # write-allocate in L2 if missing
+                    if self.l2.getFromCache(base_addr) is None:
+                        self.l2.getToCache(base_addr, self.memory)
+
+                    # write each word of the block into L2 (write-back style)
+                    for i, val in enumerate(block['data']):
+                        self.l2.writeToCache(base_addr + i, val)
+
+                    # clear dirty bit in L1
+                    block['dirty'] = False
+
+        
+        self.l1d = [ CacheWithLRU(**self.l1d_config) for _ in range(self.num_cores) ]
+
+        return self.latencies['l1_hit'] + self.latencies['l2_hit']
 
     def get_cycles(self) -> int:
         return self.cycles

@@ -1,5 +1,5 @@
 from Memory import Memory
-from Core import Core
+from Core import Core, If_program
 from CoreWithForwarding import CoreWithForwarding
 
 class Simulator:
@@ -24,6 +24,8 @@ class Simulator:
 
         for core in self.cores:
             core.data_segment = self.data_segment
+        If_program.cores = self.cores
+
 
     def make_labels(self):
         for core in self.cores:

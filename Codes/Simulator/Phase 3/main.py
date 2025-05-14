@@ -70,7 +70,9 @@ sw x8 0(x0)
 addi x11 x11 4
 addi x7 x7 -1
 j loop1
-exit1: bne x31 x1 exit2
+exit1: addi x0 x0 0
+sync
+bne x31 x1 exit2
 loop2: beq x7 x0 exit2
 lw x4 0(x12)
 lw x8 4(x0)
@@ -79,7 +81,9 @@ sw x8 4(x0)
 addi x12 x12 4
 addi x7 x7 -1
 j loop2
-exit2: bne x31 x2 exit3
+exit2: addi x0 x0 0
+sync
+bne x31 x2 exit3
 loop3: beq x7 x0 exit3
 lw x4 0(x13)
 lw x8 8(x0)
@@ -88,7 +92,9 @@ sw x8 8(x0)
 addi x13 x13 4
 addi x7 x7 -1
 j loop3
-exit3: bne x31 x3 exit
+exit3: addi x0 x0 0
+sync
+bne x31 x3 exit
 loop4: beq x7 x0 exit
 lw x4 0(x14)
 lw x8 12(x0)
@@ -98,6 +104,7 @@ addi x14 x14 4
 addi x7 x7 -1
 j loop4
 exit: addi x0 x0 0
+sync
 lw x16 0(x0)
 lw x17 4(x0)
 lw x18 8(x0)
@@ -150,7 +157,6 @@ program3 = '''
 addi x1 x0 1
 addi x2 x0 2
 addi x3 x0 3
-addi x5 x0 10
 
 bne x31 x0 exit1
 addi x5 x0 0
@@ -174,10 +180,89 @@ program4 = '''
 .data
 
 .text
-addi x0 x0 1
-sync
-addi x1 x1 1
+addi x0 x0 0
+bne x31 x0 exit
+addi x1 x1 2
+exit: addi x2 x2 0
 '''
+
+algorithm1 = '''
+.data
+arr: .word 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA 0xB, 0xC, 0xD, 0xE, 0xF, 0x10, 0x11, 0x12, 0x13, 0x14 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A 0x2B, 0x2C, 0x2D, 0x2E, 0x2F, 0x30, 0x31, 0x32, 0x33, 0x34 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x40 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A 0x4B, 0x4C, 0x4D, 0x4E, 0x4F, 0x50, 0x51, 0x52, 0x53, 0x54 0x55, 0x56, 0x57, 0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x5F, 0x60, 0x61, 0x62, 0x63, 0x64
+.text
+la x10 arr #array pointer
+
+sync
+addi x1 x0 1 #coreid
+addi x2 x0 2 #coreid
+addi x3 x0 3 #coreid
+
+addi x11 x10 0  #core wise memory pointers
+addi x12 x11 100
+addi x13 x11 200
+addi x14 x11 300
+
+addi x22 x0 600 #mem to store values by each core
+
+addi x7 x0 25 #contains 25 value
+
+bne x31 x0 l1
+loop1: bne x15 x7 exit1
+lw x16 0(x11)
+add x18 x18 x16
+addi x15 x15 1
+addi x11 x11 4
+j loop1
+exit1: sw x18 0(x22)
+
+l1: bne x31 x1 l2
+
+loop2: bne x15 x7 exit2
+lw x16 0(x12)
+add x18 x18 x16
+addi x15 x15 1
+addi x12 x12 4
+j loop2
+exit2: sw x18 4(x22)
+
+l2: bne x31 x2 l3
+
+loop3: bne x15 x7 exit3
+lw x16 0(x13)
+add x18 x18 x16
+addi x15 x15 1
+addi x13 x13 4
+j loop3
+exit3: sw x18 8(x22)
+
+l3: bne x31 x3 exit
+
+loop4: bne x15 x7 exit4
+lw x16 0(x14)
+add x18 x18 x16
+addi x15 x15 1
+addi x14 x14 4
+j loop4
+exit4: sw x18 12(x22)
+
+exit: addi x0 x0 0
+addi x0 x0 0
+addi x1 x1 0
+sync
+
+bne x31 x0 fin
+lw x24 0(x22)
+lw x25 4(x22)
+lw x26 8(x22)
+lw x27 12(x22)
+add x28 x24 x25
+add x28 x28 x26
+add x28 x28 x27
+ecall x28
+fin: addi x0 x0 0
+
+'''
+
 
 
 def preprocess(program):
@@ -197,7 +282,7 @@ def preprocess(program):
 
     return programs_text, programs_data
 
-def main(program, forwarding=False):
+def main(program, forwarding):
     programs_text, programs_data = preprocess(program)
     sim = Simulator(forwarding=forwarding)
     sim.program = programs_text
@@ -210,14 +295,11 @@ def main(program, forwarding=False):
     print(sim.cores[2].registers)
     print(sim.cores[3].registers)
 
-    print(f"number of clock cycles: {sim.clock}")
-
-    shared_memory = sim.memory.printMemory()
-    print("Shared memory: ", shared_memory)
     # print("Core 0: ", memories[0])
     # print("Core 1: ", memories[1])
     # print("Core 2: ", memories[2])
     # print("Core 3: ", memories[3])
+    # print(Core.candm.l1d[0].cache)
 
     # Print the stall count for each core
     for i, core in enumerate(sim.cores):
@@ -229,7 +311,7 @@ def main(program, forwarding=False):
     return sim
 
 ## Local ###
-main(program=program4, forwarding=False)
+main(program=algorithm1, forwarding=False)
 
 # with open('./assembly.asm', 'r') as file:
 #     program_file = file.read()

@@ -1,7 +1,7 @@
 l1d_config:
-  cache_size: 1024
-  block_size: 64
-  associativity: 4
+  cache_size: 40
+  block_size: 4
+  associativity: 1
 
 l1i_config:
   cache_size: 512
@@ -27,4 +27,4 @@ cache_latencies:
   l1_miss: 2
   l2_hit: 5
   l2_miss: 10
-  mem_access: 100
+  mem_access: 13

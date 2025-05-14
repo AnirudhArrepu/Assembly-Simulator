@@ -46,7 +46,7 @@ class CacheWithLRU:
         print(f"Cache miss at set {index}")
         return None
 
-    def getToCache(self, address, memory, address_size=40):
+    def getToCache(self, address, memory, l2_cache = None, address_size=40):
         """
         Load the block containing `address` from main memory into cache.
         If eviction of a dirty block is needed, write it back first.
@@ -92,7 +92,14 @@ class CacheWithLRU:
             evict_base = (old_tag << (index_bits + offset_bits)) | (index << offset_bits)
             # Write back
             for i in range(self.block_size):
-                memory.memory[evict_base + i] = lru_block["data"][i]
+                addr = evict_base + i
+                value = lru_block["data"][i]
+                memory.memory[addr] = value
+                
+                # Also write back to L2 if present
+                if l2_cache:
+                    l2_cache.writeToCache(addr, value, address_size=address_size)
+                    
             print(f"Write-back eviction: set {index}, tag {old_tag} → memory")
 
         # Replace
