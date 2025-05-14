@@ -167,6 +167,9 @@ exit3: addi x0 x0 0
 bne x31 x3 exit4
 addi x5 x3 0
 exit4: addi x0 x0 0
+
+sync
+addi x0 x0 0
 '''
 
 #testing cache
@@ -174,8 +177,9 @@ program4 = '''
 .data
 
 .text
-lw x1 0(x0)
-addi x2 x2 0
+addi x0 x0 0
+sync
+addi x1 x1 3
 '''
 
 

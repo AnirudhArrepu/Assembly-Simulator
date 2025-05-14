@@ -1,9 +1,17 @@
 class If_program:
     program = []
 
-    global_sync_pointer = [[0, 0, 0, 0] for _ in range(len(program))]
+    cores = None
 
-    global_min_pc_pointer = 0
+    global_sync_pointer = None
+
+    active_pcs = [0, 0, 0, 0]
+
+    global_min = 0
+
+    setInactive = [False, False, False, False]
+
+    call_count = 0
 
     @staticmethod
     def IF(pipeline_reg_if, pc, core):
@@ -16,20 +24,49 @@ class If_program:
                 core.stall_count += 1
                 print("IF stage stalling, cycles remaining:", pipeline_reg_if["cycles_remaining"],
                       "for instruction fetch at PC", pc - 1, If_program.program[pc - 1])
+                
+                if pipeline_reg_if["cycles_remaining"] == 1:
+                    if pipeline_reg_if["raw"] == "sync":
+                        print("Core", core.coreid, "sync instruction at PC", pc - 1)
+                        If_program.global_sync_pointer[pc-1][core.coreid] = 1
+                        if If_program.global_sync_pointer[pc-1] != [1,1,1,1]:
+                            pipeline_reg_if["cycles_remaining"] += 1
+                            print("Core", core.coreid, "waiting for other cores to sync at PC", pc - 1)
+                            print("adding more clock cycles to work")
+                
                 return pc, pipeline_reg_if
             # once cycles_remaining==1, let it move to ID next cycle
-            else:
-                # checking if all cores have come to sync or else adding a cycle stoppage (ensuring not refetching the same instruction again and again)
-                if pipeline_reg_if["raw"] == "sync":
-                    If_program.global_sync_pointer[pc][core.coreid] = 1
-                    print("Core", core.coreid, "sync instruction at PC", pc - 1)
-                    if min(If_program.global_sync_pointer[pc]) == 0:
-                        pipeline_reg_if["cycles_remaining"] += 1
-
+            
             return pc, pipeline_reg_if
 
-        # no outstanding fetch, initiate a new one if PC in range
         if pc < len(If_program.program):
+            # if If_program.call_count%4==0:
+            #     If_program.global_min = min([core.pc for core in If_program.cores])
+            #     print("global minimum pc", If_program.global_min)
+            
+            # if pc != If_program.global_min:
+            #     print("moved down the pipeline at core", core.coreid, "to PC", pc)
+            #     If_program.setInactive[core.coreid] = True
+            #     If_program.active_pcs[core.coreid] = pc
+            #     pc = If_program.global_min
+
+            # print(If_program.setInactive[core.coreid], "at core", core.coreid, "at PC", pc)
+            # if If_program.setInactive[core.coreid] == True and pc == If_program.active_pcs[core.coreid]:
+            #     If_program.setInactive[core.coreid] = False
+            #     print("core in concurrency with other cores", core.coreid, "at PC", pc)
+
+            If_program.call_count += 1
+            
+            # if (pc != If_program.global_min):
+            #     If_program.active_pcs[core.coreid] = pc
+            #     pc = min([core.pc for core in If_program.cores])
+            #     print("active instruction in core", core.coreid, "at PC", pc)
+            #     If_program.setInactive[core.coreid] = True
+
+            # if pc == If_program.active_pcs[core.coreid]:
+            #     print("deactivated instruction in core", core.coreid, "at PC", pc)
+            #     If_program.setInactive[core.coreid] = False
+
             instr = If_program.program[pc]
             addr = pc * 4 + 320 #40 is the address offset of the first instruciton in memory
 
@@ -42,10 +79,17 @@ class If_program:
             print(core.coreid, "IF: fetched", instr, "at PC", pc, "with", stall_cycles, "stall cycles")
             pc += 1
 
+            if "sync" in instr:
+                If_program.global_sync_pointer[pc-1][core.coreid] = 1
+                print("Core", core.coreid, "sync instruction at PC", pc - 1)
+                if If_program.global_sync_pointer[pc-1] != [1,1,1,1]:
+                    if pipeline_reg_if["cycles_remaining"] == 1:
+                        pipeline_reg_if["cycles_remaining"] += 1
+                    print("Core", core.coreid, "waiting for other cores to sync at PC", pc - 1)
+
         else:
             print(core.coreid, "pc greater than limits")
             pipeline_reg_if = None
-
         return pc, pipeline_reg_if
 
 
@@ -188,7 +232,7 @@ class Core:
 
     # --- Pipeline Stages ---
     def ID(self):
-        if self.pipeline_reg["IF"] is None or self.pipeline_reg["IF"]["cycles_remaining"] > 1 or self.pipeline_reg["IF"]["raw"]== "nop":
+        if self.pipeline_reg["IF"] is None or self.pipeline_reg["IF"]["cycles_remaining"] > 1 or self.pipeline_reg["IF"]["raw"]== "nop" or If_program.setInactive[self.coreid] == True:
             self.pipeline_reg["ID"] = None
         else:
             tokens = self.pipeline_reg["IF"]["raw"].split()
